@@ -1,0 +1,7 @@
+target/
+.idea/
+*.iml
+scomp/*.o
+scomp/executable_name
+bin/
+.DS_Store

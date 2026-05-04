@@ -1,0 +1,67 @@
+@startuml
+left to right direction
+
+' Atores
+actor "Flight Control Operator" as FCO
+actor "Pilot" as Pilot
+actor "Weather Person" as WP
+actor "Air Transport Company\nCollaborator" as ATCC
+actor "Admin" as Admin
+actor "Backoffice Operator" as BO
+
+' Pacotes e Casos de Uso
+package "Flight Management" {
+  usecase "Simulate air control" as SAC
+  usecase "Test flight plan" as TFP
+  usecase "Register flight plan" as RFP
+}
+
+package "Weather Service" {
+  usecase "Consult weather data" as CWD
+  usecase "Import bulk weather data" as IBWD
+  usecase "Register weather data" as RWD
+}
+
+package "Air Companies Configuration" {
+  usecase "Create flight route" as CFR
+  usecase "Create aircraft" as CA
+  usecase "Manage pilots" as MP
+}
+
+package "Backoffice Config" {
+  usecase "Manage users" as MU
+  usecase "Create aircraft model" as CAM
+  usecase "Create aircraft/engine maker" as CAEM
+  usecase "Create airport" as CAirp
+  usecase "Create air traffic area" as CATA
+  usecase "Create air transport company" as CATC
+  usecase "Create engine model" as CEM
+}
+
+' Relações
+FCO --> SAC
+FCO --> TFP
+FCO --> CWD
+
+Pilot --> TFP
+Pilot --> RFP
+Pilot --> CWD
+
+WP --> IBWD
+WP --> RWD
+
+ATCC --> CFR
+ATCC --> CA
+ATCC --> MP
+
+Admin --> MU
+
+BO --> MU
+BO --> CAM
+BO --> CAEM
+BO --> CAirp
+BO --> CATA
+BO --> CATC
+BO --> CEM
+
+@enduml

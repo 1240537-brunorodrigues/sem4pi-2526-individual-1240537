@@ -1,0 +1,1 @@
+The AlSafe system manages back-office configuration, users, airlines, aircraft, routes, flight plans, weather data, and air traffic control simulations.
