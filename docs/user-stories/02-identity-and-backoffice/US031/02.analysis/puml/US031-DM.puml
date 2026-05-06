@@ -1,0 +1,51 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Administrator {
+    email
+}
+
+class User {
+    email
+    name
+    phoneNumber
+    status
+}
+
+class Role {
+    name
+}
+
+class SecurityClearance {
+    expirationDate
+}
+
+class SkillsAssessment {
+    lastAssessmentDate
+    validityPeriod
+}
+
+class EmailDomain {
+    domain
+}
+
+class BootstrapProcess {
+    source
+}
+
+Administrator "1" -- "*" User : registers >
+BootstrapProcess "1" -- "*" User : initializes >
+User "1" -- "1..*" Role : has >
+User "1" -- "1" SecurityClearance : has >
+User "1" -- "1" SkillsAssessment : has >
+User "*" -- "1" EmailDomain : must belong to >
+
+@enduml

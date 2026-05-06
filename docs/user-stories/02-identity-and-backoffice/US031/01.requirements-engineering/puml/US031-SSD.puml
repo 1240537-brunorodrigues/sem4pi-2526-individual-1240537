@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Administrator" as Admin
+participant ":System" as System
+
+activate Admin
+
+Admin -> System : Requests to register a backoffice user
+
+activate System
+System --> Admin : Requests user data
+deactivate System
+
+Admin -> System : Provides user data
+
+activate System
+System --> System : Validate required data
+System --> System : Validate email format and domain
+System --> System : Check if email already exists
+System --> System : Validate role
+System --> System : Validate security clearance
+System --> System : Validate skills assessment
+
+alt user data is valid
+    System --> System : Register user
+    System --> Admin : User registered successfully
+else user data is invalid
+    System --> Admin : Display error message
+end
+
+deactivate System
+deactivate Admin
+
+@enduml

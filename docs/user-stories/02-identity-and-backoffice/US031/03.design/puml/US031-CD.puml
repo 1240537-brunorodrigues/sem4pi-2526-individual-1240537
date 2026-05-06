@@ -1,0 +1,140 @@
+@startuml
+title US031-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RegisterUserUI {
+        - email: String
+        - name: String
+        - phoneNumber: String
+        - selectedRoles: List<String>
+        - securityClearanceExpirationDate: LocalDate
+        - lastSkillsAssessmentDate: LocalDate
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterUserController {
+        + registerUser(request: RegisterUserRequest): UserDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterUserService {
+        + registerUser(request: RegisterUserRequest): UserDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterUserRequest {
+        - email: String
+        - name: String
+        - phoneNumber: String
+        - roleNames: List<String>
+        - securityClearanceExpirationDate: LocalDate
+        - lastSkillsAssessmentDate: LocalDate
+    }
+
+    class UserDTO {
+        - email: String
+        - name: String
+        - phoneNumber: String
+        - roles: List<String>
+        - enabled: boolean
+    }
+
+    class BootstrapUserLoader {
+        + loadDefaultUsers(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - enabled: boolean
+        - roles: List<Role>
+        - credential: Credential
+        - securityClearance: SecurityClearance
+        - skillsAssessment: SkillsAssessment
+        + User(...)
+        + enable(): void
+        + disable(): void
+        + hasRole(role: Role): boolean
+    }
+
+    class Email {
+        - value: String
+        + Email(value: String)
+    }
+
+    class PhoneNumber {
+        - value: String
+        + PhoneNumber(value: String)
+    }
+
+    class Credential {
+        - passwordHash: String
+        + Credential(passwordHash: String)
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class SecurityClearance {
+        - expirationDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+
+    class SkillsAssessment {
+        - lastAssessmentDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "repository" #DDDDDD {
+    interface UserRepository {
+        + existsByEmail(email: Email): boolean
+        + save(user: User): void
+        + findByEmail(email: Email): Optional<User>
+    }
+
+    interface RoleRepository {
+        + findByName(name: String): Optional<Role>
+    }
+}
+
+RegisterUserUI --> RegisterUserController : uses >
+RegisterUserController --> RegisterUserService : uses >
+RegisterUserService --> AuthorizationService : checks permission >
+RegisterUserService --> UserRepository : checks/saves >
+RegisterUserService --> RoleRepository : retrieves roles >
+RegisterUserService --> User : creates >
+RegisterUserService --> UserDTO : returns >
+BootstrapUserLoader --> RegisterUserService : uses >
+
+User *-- Email
+User *-- PhoneNumber
+User *-- Credential
+User *-- SecurityClearance
+User *-- SkillsAssessment
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+
+@enduml
