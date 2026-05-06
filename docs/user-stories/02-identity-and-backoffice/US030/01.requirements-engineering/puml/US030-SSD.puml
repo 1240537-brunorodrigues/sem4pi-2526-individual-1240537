@@ -1,0 +1,47 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "User" as User
+participant ":System" as System
+
+activate User
+
+User -> System : Requests authentication
+
+activate System
+System --> User : Requests email and password
+deactivate System
+
+User -> System : Provides email and password
+
+activate System
+System --> System : Validate credentials
+System --> System : Check if user is enabled
+System --> System : Check security clearance validity
+System --> System : Check skills assessment validity
+
+alt authentication is valid
+    System --> User : Authentication successful
+
+    User -> System : Requests access to a protected functionality
+
+    System --> System : Check required role or permission
+
+    alt user is authorized
+        System --> User : Access granted
+    else user is not authorized
+        System --> User : Access denied
+    end
+
+else authentication is invalid
+    System --> User : Authentication failed
+end
+
+deactivate System
+deactivate User
+
+@enduml

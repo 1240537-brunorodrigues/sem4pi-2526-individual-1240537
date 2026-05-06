@@ -1,0 +1,111 @@
+@startuml
+title US030-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class AuthenticationUI {
+        - email: String
+        - password: String
+        + requestCredentials()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class AuthenticationController {
+        + authenticate(email: String, password: String): AuthenticatedUserSession
+        + authorize(session: AuthenticatedUserSession, permission: Permission): boolean
+    }
+}
+
+package "application" #DDDDDD {
+    class AuthenticationService {
+        + authenticate(email: String, password: String): AuthenticatedUserSession
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class AuthenticatedUserSession {
+        - user: User
+        + getUser(): User
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: String
+        - enabled: boolean
+        - roles: List<Role>
+        - credential: Credential
+        - securityClearance: SecurityClearance
+        - skillsAssessment: SkillsAssessment
+        + isEnabled(): boolean
+        + hasValidSecurityClearance(currentDate: LocalDate): boolean
+        + hasValidSkillsAssessment(currentDate: LocalDate): boolean
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Email {
+        - value: String
+        + Email(value: String)
+    }
+
+    class Credential {
+        - passwordHash: String
+        + matches(rawPassword: String): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class SecurityClearance {
+        - expirationDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+
+    class SkillsAssessment {
+        - lastAssessmentDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "repository" #DDDDDD {
+    interface UserRepository {
+        + findByEmail(email: Email): Optional<User>
+        + save(user: User): void
+    }
+}
+
+AuthenticationUI --> AuthenticationController : uses >
+AuthenticationController --> AuthenticationService : uses >
+AuthenticationController --> AuthorizationService : uses >
+AuthenticationService --> UserRepository : searches >
+AuthenticationService --> AuthenticatedUserSession : creates >
+AuthenticationService --> User : validates >
+AuthorizationService --> User : checks permissions >
+
+UserRepository --> User : retrieves >
+User *-- Email
+User *-- Credential
+User *-- SecurityClearance
+User *-- SkillsAssessment
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+
+@enduml

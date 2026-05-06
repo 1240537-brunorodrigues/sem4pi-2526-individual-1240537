@@ -1,0 +1,46 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class User {
+    email
+    name
+    phoneNumber
+    status
+}
+
+class Role {
+    name
+}
+
+class Permission {
+    name
+}
+
+class SecurityClearance {
+    expirationDate
+}
+
+class SkillsAssessment {
+    lastAssessmentDate
+    validityPeriod
+}
+
+class Credential {
+    passwordHash
+}
+
+User "1" -- "1" Credential : has >
+User "1" -- "1..*" Role : has >
+Role "1" -- "*" Permission : grants >
+User "1" -- "1" SecurityClearance : has >
+User "1" -- "1" SkillsAssessment : has >
+
+@enduml
