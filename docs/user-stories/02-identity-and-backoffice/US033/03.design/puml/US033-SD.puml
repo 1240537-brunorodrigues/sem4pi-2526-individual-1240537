@@ -1,0 +1,73 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Administrator" as Admin
+participant "ListUsersUI" as UI
+participant "ListUsersController" as CTRL
+participant "ListUsersService" as Service
+participant "AuthorizationService" as AuthzService
+participant "UserRepository" as UserRepo
+participant "UserDTO" as UserDTO
+
+activate Admin
+
+Admin -> UI : Requests to list backoffice users
+
+activate UI
+UI -> CTRL : listUsers()
+
+activate CTRL
+CTRL -> Service : listUsers()
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, LIST_USERS)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt administrator is authorized
+
+    Service -> UserRepo : findAllBackofficeUsers()
+
+    activate UserRepo
+    UserRepo --> Service : List<User>
+    deactivate UserRepo
+
+    alt users exist
+
+        loop for each user
+            Service -> UserDTO ** : UserDTO(user data)
+        end
+
+        Service --> CTRL : List<UserDTO>
+        CTRL --> UI : List<UserDTO>
+        UI --> Admin : Display users with status
+
+    else no users exist
+
+        Service --> CTRL : Empty list
+        CTRL --> UI : Empty list
+        UI --> Admin : Display empty list message
+
+    end
+
+else administrator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> Admin : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate Admin
+
+@enduml

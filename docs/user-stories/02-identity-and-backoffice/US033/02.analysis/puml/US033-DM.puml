@@ -1,0 +1,41 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Administrator {
+    email
+}
+
+class User {
+    email
+    name
+    phoneNumber
+    status
+}
+
+class UserStatus {
+    enabled
+    disabled
+}
+
+class Role {
+    name
+}
+
+class UserList {
+    users
+}
+
+Administrator "1" -- "*" UserList : requests >
+UserList "1" o-- "*" User : contains >
+User "1" -- "1" UserStatus : has >
+User "1" -- "1..*" Role : has >
+
+@enduml

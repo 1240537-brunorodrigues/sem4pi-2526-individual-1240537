@@ -1,0 +1,33 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Administrator" as Admin
+participant ":System" as System
+
+activate Admin
+
+Admin -> System : Requests to list backoffice users
+
+activate System
+System --> System : Check if Administrator is authorized
+System --> System : Retrieve backoffice users
+System --> System : Prepare user list with status
+
+alt administrator is authorized
+    alt users exist
+        System --> Admin : Display list of users with status
+    else no users exist
+        System --> Admin : Display empty list message
+    end
+else administrator is not authorized
+    System --> Admin : Display access denied message
+end
+
+deactivate System
+deactivate Admin
+
+@enduml

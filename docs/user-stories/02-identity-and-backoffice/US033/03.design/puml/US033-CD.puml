@@ -1,0 +1,101 @@
+@startuml
+title US033-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ListUsersUI {
+        + requestUserList()
+        + displayUsers(users: List<UserDTO>)
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ListUsersController {
+        + listUsers(): List<UserDTO>
+    }
+}
+
+package "application" #DDDDDD {
+    class ListUsersService {
+        + listUsers(): List<UserDTO>
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class UserDTO {
+        - email: String
+        - name: String
+        - phoneNumber: String
+        - enabled: boolean
+        - roles: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - enabled: boolean
+        - roles: List<Role>
+        - securityClearance: SecurityClearance
+        - skillsAssessment: SkillsAssessment
+        + isEnabled(): boolean
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Email {
+        - value: String
+    }
+
+    class PhoneNumber {
+        - value: String
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class SecurityClearance {
+        - expirationDate: LocalDate
+    }
+
+    class SkillsAssessment {
+        - lastAssessmentDate: LocalDate
+    }
+}
+
+package "repository" #DDDDDD {
+    interface UserRepository {
+        + findAllBackofficeUsers(): List<User>
+    }
+}
+
+ListUsersUI --> ListUsersController : uses >
+ListUsersController --> ListUsersService : uses >
+ListUsersService --> AuthorizationService : checks permission >
+ListUsersService --> UserRepository : retrieves >
+ListUsersService --> UserDTO : creates >
+UserRepository --> User : returns >
+
+User *-- Email
+User *-- PhoneNumber
+User *-- SecurityClearance
+User *-- SkillsAssessment
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+
+@enduml
