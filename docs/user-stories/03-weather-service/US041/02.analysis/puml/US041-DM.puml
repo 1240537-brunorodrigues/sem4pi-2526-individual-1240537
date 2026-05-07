@@ -1,0 +1,48 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class WeatherPerson {
+    email
+}
+
+class WeatherData {
+    dateTime
+    windDirection
+    windSpeed
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class Wind {
+    direction
+    speed
+}
+
+class WeatherSource {
+    type
+    description
+}
+
+class WeatherService {
+    weatherRecords
+}
+
+WeatherPerson "1" -- "*" WeatherData : registers >
+WeatherService "1" o-- "*" WeatherData : stores >
+WeatherData "*" -- "1" AirControlArea : belongs to >
+WeatherData "1" -- "1" Wind : contains >
+WeatherData "*" -- "1" WeatherSource : has >
+
+@enduml

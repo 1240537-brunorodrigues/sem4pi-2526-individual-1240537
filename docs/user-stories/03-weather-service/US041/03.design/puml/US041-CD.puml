@@ -1,0 +1,128 @@
+@startuml
+title US041-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RegisterWeatherDataUI {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windDirection: double
+        - windSpeed: double
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterWeatherDataController {
+        + registerWeatherData(request: RegisterWeatherDataRequest): WeatherDataDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterWeatherDataService {
+        + registerWeatherData(request: RegisterWeatherDataRequest): WeatherDataDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterWeatherDataRequest {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windDirection: double
+        - windSpeed: double
+        - sourceDescription: String
+    }
+
+    class WeatherDataDTO {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windDirection: double
+        - windSpeed: double
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirControlArea {
+        - code: String
+        - name: String
+        - geographicBoundaries: String
+    }
+
+    class WeatherData {
+        - airControlArea: AirControlArea
+        - dateTime: LocalDateTime
+        - wind: Wind
+        - source: WeatherSource
+        + WeatherData(airControlArea: AirControlArea, dateTime: LocalDateTime, wind: Wind, source: WeatherSource)
+    }
+
+    class Wind {
+        - direction: double
+        - speed: double
+        + Wind(direction: double, speed: double)
+        + isValidDirection(direction: double): boolean
+        + isValidSpeed(speed: double): boolean
+    }
+
+    class WeatherSource {
+        - type: String
+        - description: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirControlAreaRepository {
+        + findByCode(code: String): Optional<AirControlArea>
+    }
+
+    interface WeatherDataRepository {
+        + save(weatherData: WeatherData): void
+        + findByAreaAndDateTime(area: AirControlArea, dateTime: LocalDateTime): Optional<WeatherData>
+    }
+}
+
+RegisterWeatherDataUI --> RegisterWeatherDataController : uses >
+RegisterWeatherDataController --> RegisterWeatherDataService : uses >
+RegisterWeatherDataService --> AuthorizationService : checks permission >
+RegisterWeatherDataService --> AirControlAreaRepository : retrieves area >
+RegisterWeatherDataService --> WeatherDataRepository : saves >
+RegisterWeatherDataService --> WeatherData : creates >
+RegisterWeatherDataService --> WeatherDataDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+WeatherData "*" --> "1" AirControlArea
+WeatherData *-- Wind
+WeatherData *-- WeatherSource
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant ":System" as System
+
+activate WeatherPerson
+
+WeatherPerson -> System : Requests to register weather data
+
+activate System
+System --> WeatherPerson : Requests air control area and weather data
+deactivate System
+
+WeatherPerson -> System : Provides air control area and weather data
+
+activate System
+System --> System : Check if Weather Person is authorized
+System --> System : Validate air control area
+System --> System : Validate required weather data
+System --> System : Validate wind direction
+System --> System : Validate wind speed
+
+alt weather data is valid
+    System --> System : Register weather data
+    System --> WeatherPerson : Weather data registered successfully
+else weather data is invalid
+    System --> WeatherPerson : Display error message
+end
+
+deactivate System
+deactivate WeatherPerson
+
+@enduml

@@ -1,0 +1,102 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant "RegisterWeatherDataUI" as UI
+participant "RegisterWeatherDataController" as CTRL
+participant "RegisterWeatherDataService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirControlAreaRepository" as AreaRepo
+participant "Wind" as Wind
+participant "WeatherSource" as WeatherSource
+participant "WeatherData:\n weatherData" as WeatherData
+participant "WeatherDataRepository" as WeatherRepo
+
+activate WeatherPerson
+
+WeatherPerson -> UI : Requests to register weather data
+
+activate UI
+UI --> WeatherPerson : Requests air control area and weather data
+deactivate UI
+
+WeatherPerson -> UI : Provides weather data
+
+activate UI
+UI -> CTRL : registerWeatherData(request)
+
+activate CTRL
+CTRL -> Service : registerWeatherData(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_WEATHER_DATA)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Weather Person is authorized
+
+    Service -> AreaRepo : findByCode(request.airControlAreaCode)
+
+    activate AreaRepo
+    AreaRepo --> Service : Optional<AirControlArea>
+    deactivate AreaRepo
+
+    alt air control area exists
+
+        Service -> Wind ** : Wind(request.windDirection, request.windSpeed)
+
+        activate Wind
+        Wind --> Service : wind
+        deactivate Wind
+
+        Service -> WeatherSource ** : WeatherSource("MANUAL", request.sourceDescription)
+
+        activate WeatherSource
+        WeatherSource --> Service : source
+        deactivate WeatherSource
+
+        Service -> WeatherData ** : WeatherData(area, dateTime, wind, source)
+
+        activate WeatherData
+        WeatherData --> Service : weatherData
+        deactivate WeatherData
+
+        Service -> WeatherRepo : save(weatherData)
+
+        activate WeatherRepo
+        WeatherRepo --> Service : saved
+        deactivate WeatherRepo
+
+        Service --> CTRL : WeatherDataDTO
+        CTRL --> UI : Registration successful
+        UI --> WeatherPerson : Display success message
+
+    else air control area does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> WeatherPerson : Display area not found message
+
+    end
+
+else Weather Person is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> WeatherPerson : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate WeatherPerson
+
+@enduml
