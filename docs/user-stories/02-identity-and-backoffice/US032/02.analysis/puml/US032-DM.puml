@@ -1,0 +1,47 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Administrator {
+    email
+}
+
+class User {
+    email
+    name
+    phoneNumber
+    status
+}
+
+class UserStatus {
+    enabled
+    disabled
+}
+
+class SecurityClearance {
+    expirationDate
+}
+
+class SkillsAssessment {
+    lastAssessmentDate
+    validityPeriod
+}
+
+class Authentication {
+    credentials
+}
+
+Administrator "1" -- "*" User : manages >
+User "1" -- "1" UserStatus : has >
+User "1" -- "1" SecurityClearance : has >
+User "1" -- "1" SkillsAssessment : has >
+Authentication "*" -- "1" User : checks status of >
+
+@enduml

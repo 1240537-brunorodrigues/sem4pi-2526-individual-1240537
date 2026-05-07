@@ -1,0 +1,111 @@
+@startuml
+title US032-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ManageUserStatusUI {
+        - email: String
+        - operation: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ManageUserStatusController {
+        + disableUser(email: String): UserDTO
+        + enableUser(email: String): UserDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class ManageUserStatusService {
+        + disableUser(email: String): UserDTO
+        + enableUser(email: String): UserDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class UserDTO {
+        - email: String
+        - name: String
+        - phoneNumber: String
+        - enabled: boolean
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - enabled: boolean
+        - roles: List<Role>
+        - securityClearance: SecurityClearance
+        - skillsAssessment: SkillsAssessment
+        + enable(): void
+        + disable(): void
+        + isEnabled(): boolean
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Email {
+        - value: String
+        + Email(value: String)
+    }
+
+    class PhoneNumber {
+        - value: String
+        + PhoneNumber(value: String)
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class SecurityClearance {
+        - expirationDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+
+    class SkillsAssessment {
+        - lastAssessmentDate: LocalDate
+        + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "repository" #DDDDDD {
+    interface UserRepository {
+        + findByEmail(email: Email): Optional<User>
+        + save(user: User): void
+    }
+}
+
+ManageUserStatusUI --> ManageUserStatusController : uses >
+ManageUserStatusController --> ManageUserStatusService : uses >
+ManageUserStatusService --> AuthorizationService : checks permission >
+ManageUserStatusService --> UserRepository : retrieves/saves >
+ManageUserStatusService --> User : enables/disables >
+ManageUserStatusService --> UserDTO : returns >
+
+UserRepository --> User : stores >
+User *-- Email
+User *-- PhoneNumber
+User *-- SecurityClearance
+User *-- SkillsAssessment
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+
+@enduml

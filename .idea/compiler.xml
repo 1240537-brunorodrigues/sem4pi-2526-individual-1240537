@@ -6,7 +6,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="sem4pi-2526-individual-1240537" />
+        <module name="sem4pi-2526-1240537" />
       </profile>
     </annotationProcessing>
   </component>

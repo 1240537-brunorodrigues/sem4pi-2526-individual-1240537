@@ -1,0 +1,36 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Administrator" as Admin
+participant ":System" as System
+
+activate Admin
+
+Admin -> System : Requests to disable or enable a backoffice user
+
+activate System
+System --> Admin : Requests/verifies user identification and intended operation
+deactivate System
+
+Admin -> System : Provides user identification and operation
+
+activate System
+System --> System : Check if Administrator is authorized
+System --> System : Search user
+System --> System : Validate requested status change
+
+alt operation is valid
+    System --> System : Update user status
+    System --> Admin : User status updated successfully
+else operation is invalid
+    System --> Admin : Display error message
+end
+
+deactivate System
+deactivate Admin
+
+@enduml

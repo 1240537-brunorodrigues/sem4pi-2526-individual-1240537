@@ -1,0 +1,105 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Administrator" as Admin
+participant "ManageUserStatusUI" as UI
+participant "ManageUserStatusController" as CTRL
+participant "ManageUserStatusService" as Service
+participant "AuthorizationService" as AuthzService
+participant "UserRepository" as UserRepo
+participant "Email" as Email
+participant "User:\n targetUser" as TargetUser
+
+activate Admin
+
+Admin -> UI : Requests to disable or enable a user
+
+activate UI
+UI --> Admin : Requests user email and operation
+deactivate UI
+
+Admin -> UI : Provides user email and operation
+
+activate UI
+UI -> CTRL : changeUserStatus(email, operation)
+
+activate CTRL
+
+alt operation is disable
+    CTRL -> Service : disableUser(email)
+else operation is enable
+    CTRL -> Service : enableUser(email)
+end
+
+activate Service
+
+Service -> AuthzService : isAuthorized(currentUser, MANAGE_USER_STATUS)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt administrator is authorized
+
+    Service -> Email : Email(email)
+    activate Email
+    Email --> Service : email
+    deactivate Email
+
+    Service -> UserRepo : findByEmail(email)
+
+    activate UserRepo
+    UserRepo --> Service : Optional<User>
+    deactivate UserRepo
+
+    alt user exists
+
+        alt operation is disable
+            Service -> TargetUser : disable()
+            activate TargetUser
+            TargetUser --> Service : status updated
+            deactivate TargetUser
+        else operation is enable
+            Service -> TargetUser : enable()
+            activate TargetUser
+            TargetUser --> Service : status updated
+            deactivate TargetUser
+        end
+
+        Service -> UserRepo : save(targetUser)
+
+        activate UserRepo
+        UserRepo --> Service : saved
+        deactivate UserRepo
+
+        Service --> CTRL : UserDTO
+        CTRL --> UI : Operation successful
+        UI --> Admin : Display success message
+
+    else user does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> Admin : Display user not found message
+
+    end
+
+else administrator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> Admin : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate Admin
+
+@enduml
