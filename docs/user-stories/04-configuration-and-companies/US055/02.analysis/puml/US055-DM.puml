@@ -1,0 +1,59 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class AircraftModel {
+    modelName
+    emptyWeight
+    maximumTakeOffWeight
+    maximumZeroFuelWeight
+    maximumFuelCapacity
+    serviceCeiling
+    cruiseSpeed
+    wingArea
+    dragCoefficient
+    liftCoefficient
+}
+
+class AircraftManufacturer {
+    name
+    country
+}
+
+class AircraftType {
+    name
+}
+
+class AircraftEngineModel {
+    modelName
+    power
+    efficiency
+}
+
+class CertifiedEngineModel {
+    certificationDate
+}
+
+class BootstrapProcess {
+    source
+}
+
+BackofficeOperator "1" -- "*" AircraftModel : registers >
+BootstrapProcess "1" -- "*" AircraftModel : initializes >
+AircraftModel "*" -- "1" AircraftManufacturer : made by >
+AircraftModel "*" -- "1" AircraftType : has >
+AircraftModel "1" -- "1..*" CertifiedEngineModel : certifies >
+CertifiedEngineModel "*" -- "1" AircraftEngineModel : references >
+
+@enduml

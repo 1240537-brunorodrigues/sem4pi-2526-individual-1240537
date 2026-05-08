@@ -1,0 +1,144 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RegisterAircraftModelUI" as UI
+participant "RegisterAircraftModelController" as CTRL
+participant "RegisterAircraftModelService" as Service
+participant "AuthorizationService" as AuthzService
+participant "ManufacturerRepository" as ManufacturerRepo
+participant "AircraftModelName" as AircraftModelName
+participant "AircraftType" as AircraftType
+participant "AircraftEngineModelRepository" as EngineRepo
+participant "AircraftCharacteristics" as Characteristics
+participant "AircraftModelRepository" as AircraftModelRepo
+participant "AircraftModel:\n aircraftModel" as AircraftModel
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to register an aircraft model
+
+activate UI
+UI --> BackofficeOperator : Requests aircraft model data and certified engines
+deactivate UI
+
+BackofficeOperator -> UI : Provides aircraft model data
+
+activate UI
+UI -> CTRL : registerAircraftModel(request)
+
+activate CTRL
+CTRL -> Service : registerAircraftModel(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_AIRCRAFT_MODEL)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> ManufacturerRepo : findByName(request.manufacturerName)
+
+    activate ManufacturerRepo
+    ManufacturerRepo --> Service : Optional<Manufacturer>
+    deactivate ManufacturerRepo
+
+    alt manufacturer exists
+
+        Service -> AircraftModelName ** : AircraftModelName(request.modelName)
+
+        activate AircraftModelName
+        AircraftModelName --> Service : modelName
+        deactivate AircraftModelName
+
+        Service -> AircraftType ** : AircraftType(request.aircraftType)
+
+        activate AircraftType
+        AircraftType --> Service : aircraftType
+        deactivate AircraftType
+
+        loop for each certified engine model id
+            Service -> EngineRepo : findById(engineModelId)
+
+            activate EngineRepo
+            EngineRepo --> Service : Optional<AircraftEngineModel>
+            deactivate EngineRepo
+        end
+
+        alt at least one certified engine model exists
+
+            Service -> Characteristics ** : AircraftCharacteristics(weights, fuel,\nperformance, aerodynamic coefficients)
+
+            activate Characteristics
+            Characteristics --> Service : characteristics
+            deactivate Characteristics
+
+            Service -> AircraftModelRepo : existsByNameAndManufacturer(modelName, manufacturer)
+
+            activate AircraftModelRepo
+            AircraftModelRepo --> Service : true/false
+            deactivate AircraftModelRepo
+
+            alt model name and manufacturer combination is unique
+
+                Service -> AircraftModel ** : AircraftModel(modelName, manufacturer,\naircraftType, characteristics, certifiedEngines)
+
+                activate AircraftModel
+                AircraftModel --> Service : aircraftModel
+                deactivate AircraftModel
+
+                Service -> AircraftModelRepo : save(aircraftModel)
+
+                activate AircraftModelRepo
+                AircraftModelRepo --> Service : saved
+                deactivate AircraftModelRepo
+
+                Service --> CTRL : AircraftModelDTO
+                CTRL --> UI : Registration successful
+                UI --> BackofficeOperator : Display success message
+
+            else model name and manufacturer combination already exists
+
+                Service --> CTRL : Registration failed
+                CTRL --> UI : Error
+                UI --> BackofficeOperator : Display duplicated aircraft model error
+
+            end
+
+        else no certified engine model exists
+
+            Service --> CTRL : Registration failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display certified engine model error
+
+        end
+
+    else manufacturer does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display manufacturer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

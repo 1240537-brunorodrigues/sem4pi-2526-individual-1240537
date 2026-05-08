@@ -1,0 +1,40 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to register an aircraft model
+
+activate System
+System --> BackofficeOperator : Requests aircraft model data and certified engine model
+deactivate System
+
+BackofficeOperator -> System : Provides aircraft model data
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate required data
+System --> System : Validate manufacturer
+System --> System : Validate aircraft type
+System --> System : Check model name and manufacturer uniqueness
+System --> System : Validate certified engine model
+System --> System : Validate flight characteristics
+
+alt aircraft model data is valid
+    System --> System : Register aircraft model
+    System --> BackofficeOperator : Aircraft model registered successfully
+else aircraft model data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

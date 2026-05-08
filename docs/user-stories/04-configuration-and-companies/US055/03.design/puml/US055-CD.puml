@@ -1,0 +1,200 @@
+@startuml
+title US055-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RegisterAircraftModelUI {
+        - modelName: String
+        - manufacturerName: String
+        - aircraftType: String
+        - certifiedEngineModelIds: List<String>
+        - emptyWeight: double
+        - maximumTakeOffWeight: double
+        - maximumZeroFuelWeight: double
+        - maximumFuelCapacity: double
+        - serviceCeiling: double
+        - cruiseSpeed: double
+        - wingArea: double
+        - dragCoefficient: double
+        - liftCoefficient: double
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterAircraftModelController {
+        + registerAircraftModel(request: RegisterAircraftModelRequest): AircraftModelDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterAircraftModelService {
+        + registerAircraftModel(request: RegisterAircraftModelRequest): AircraftModelDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterAircraftModelRequest {
+        - modelName: String
+        - manufacturerName: String
+        - aircraftType: String
+        - certifiedEngineModelIds: List<String>
+        - emptyWeight: double
+        - maximumTakeOffWeight: double
+        - maximumZeroFuelWeight: double
+        - maximumFuelCapacity: double
+        - serviceCeiling: double
+        - cruiseSpeed: double
+        - wingArea: double
+        - dragCoefficient: double
+        - liftCoefficient: double
+    }
+
+    class AircraftModelDTO {
+        - modelName: String
+        - manufacturerName: String
+        - aircraftType: String
+        - certifiedEngineModels: List<String>
+        - emptyWeight: double
+        - maximumTakeOffWeight: double
+        - maximumZeroFuelWeight: double
+        - maximumFuelCapacity: double
+        - serviceCeiling: double
+        - cruiseSpeed: double
+        - wingArea: double
+        - dragCoefficient: double
+        - liftCoefficient: double
+    }
+
+    class BootstrapAircraftModelLoader {
+        + loadDefaultAircraftModels(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AircraftModel {
+        - modelName: AircraftModelName
+        - manufacturer: Manufacturer
+        - aircraftType: AircraftType
+        - characteristics: AircraftCharacteristics
+        - certifiedEngineModels: List<AircraftEngineModel>
+        + AircraftModel(...)
+        + hasCertifiedEngineModels(): boolean
+    }
+
+    class AircraftModelName {
+        - value: String
+        + AircraftModelName(value: String)
+    }
+
+    class Manufacturer {
+        - name: String
+        - country: Country
+    }
+
+    class Country {
+        - name: String
+        - code: String
+    }
+
+    class AircraftType {
+        - value: String
+        + AircraftType(value: String)
+    }
+
+    class AircraftCharacteristics {
+        - emptyWeight: double
+        - maximumTakeOffWeight: double
+        - maximumZeroFuelWeight: double
+        - maximumFuelCapacity: double
+        - serviceCeiling: double
+        - cruiseSpeed: double
+        - wingArea: double
+        - dragCoefficient: double
+        - liftCoefficient: double
+        + AircraftCharacteristics(...)
+    }
+
+    class AircraftEngineModel {
+        - modelName: EngineModelName
+        - manufacturer: Manufacturer
+        - engineType: EngineType
+    }
+
+    class EngineModelName {
+        - value: String
+    }
+
+    class EngineType {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AircraftModelRepository {
+        + existsByNameAndManufacturer(modelName: AircraftModelName, manufacturer: Manufacturer): boolean
+        + save(aircraftModel: AircraftModel): void
+        + findByNameAndManufacturer(modelName: AircraftModelName, manufacturer: Manufacturer): Optional<AircraftModel>
+    }
+
+    interface AircraftEngineModelRepository {
+        + findById(id: String): Optional<AircraftEngineModel>
+    }
+
+    interface ManufacturerRepository {
+        + findByName(name: String): Optional<Manufacturer>
+    }
+}
+
+RegisterAircraftModelUI --> RegisterAircraftModelController : uses >
+RegisterAircraftModelController --> RegisterAircraftModelService : uses >
+RegisterAircraftModelService --> AuthorizationService : checks permission >
+RegisterAircraftModelService --> ManufacturerRepository : retrieves manufacturer >
+RegisterAircraftModelService --> AircraftEngineModelRepository : retrieves certified engines >
+RegisterAircraftModelService --> AircraftModelRepository : checks/saves >
+RegisterAircraftModelService --> AircraftModel : creates >
+RegisterAircraftModelService --> AircraftModelDTO : returns >
+BootstrapAircraftModelLoader --> RegisterAircraftModelService : uses >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AircraftModel *-- AircraftModelName
+AircraftModel "*" --> "1" Manufacturer
+AircraftModel *-- AircraftType
+AircraftModel *-- AircraftCharacteristics
+AircraftModel "1" o-- "1..*" AircraftEngineModel
+Manufacturer *-- Country
+AircraftEngineModel *-- EngineModelName
+AircraftEngineModel *-- EngineType
+
+@enduml
