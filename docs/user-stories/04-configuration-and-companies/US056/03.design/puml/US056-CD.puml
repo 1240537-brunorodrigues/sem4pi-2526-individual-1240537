@@ -1,0 +1,161 @@
+@startuml
+title US056-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RegisterAircraftEngineModelUI {
+        - modelName: String
+        - manufacturerName: String
+        - engineType: String
+        - power: double
+        - fuelType: String
+        - efficiency: double
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterAircraftEngineModelController {
+        + registerAircraftEngineModel(request: RegisterAircraftEngineModelRequest): AircraftEngineModelDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterAircraftEngineModelService {
+        + registerAircraftEngineModel(request: RegisterAircraftEngineModelRequest): AircraftEngineModelDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterAircraftEngineModelRequest {
+        - modelName: String
+        - manufacturerName: String
+        - engineType: String
+        - power: double
+        - fuelType: String
+        - efficiency: double
+    }
+
+    class AircraftEngineModelDTO {
+        - modelName: String
+        - manufacturerName: String
+        - engineType: String
+        - power: double
+        - fuelType: String
+        - efficiency: double
+    }
+
+    class BootstrapAircraftEngineModelLoader {
+        + loadDefaultEngineModels(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AircraftEngineModel {
+        - modelName: EngineModelName
+        - manufacturer: Manufacturer
+        - engineType: EngineType
+        - power: Power
+        - fuelType: FuelType
+        - efficiency: Efficiency
+        + AircraftEngineModel(...)
+    }
+
+    class EngineModelName {
+        - value: String
+        + EngineModelName(value: String)
+    }
+
+    class Manufacturer {
+        - name: String
+        - country: Country
+    }
+
+    class Country {
+        - name: String
+        - code: String
+    }
+
+    class EngineType {
+        - value: String
+        + EngineType(value: String)
+    }
+
+    class FuelType {
+        - value: String
+        + FuelType(value: String)
+    }
+
+    class Power {
+        - value: double
+        + Power(value: double)
+    }
+
+    class Efficiency {
+        - value: double
+        + Efficiency(value: double)
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AircraftEngineModelRepository {
+        + existsByNameAndManufacturer(modelName: EngineModelName, manufacturer: Manufacturer): boolean
+        + save(engineModel: AircraftEngineModel): void
+        + findByNameAndManufacturer(modelName: EngineModelName, manufacturer: Manufacturer): Optional<AircraftEngineModel>
+    }
+
+    interface ManufacturerRepository {
+        + findByName(name: String): Optional<Manufacturer>
+    }
+}
+
+RegisterAircraftEngineModelUI --> RegisterAircraftEngineModelController : uses >
+RegisterAircraftEngineModelController --> RegisterAircraftEngineModelService : uses >
+RegisterAircraftEngineModelService --> AuthorizationService : checks permission >
+RegisterAircraftEngineModelService --> ManufacturerRepository : retrieves manufacturer >
+RegisterAircraftEngineModelService --> AircraftEngineModelRepository : checks/saves >
+RegisterAircraftEngineModelService --> AircraftEngineModel : creates >
+RegisterAircraftEngineModelService --> AircraftEngineModelDTO : returns >
+BootstrapAircraftEngineModelLoader --> RegisterAircraftEngineModelService : uses >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AircraftEngineModel *-- EngineModelName
+AircraftEngineModel "*" --> "1" Manufacturer
+AircraftEngineModel *-- EngineType
+AircraftEngineModel *-- Power
+AircraftEngineModel *-- FuelType
+AircraftEngineModel *-- Efficiency
+Manufacturer *-- Country
+
+@enduml

@@ -1,0 +1,45 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class AircraftEngineModel {
+    modelName
+    power
+    efficiency
+}
+
+class EngineManufacturer {
+    name
+    country
+}
+
+class EngineType {
+    name
+}
+
+class FuelType {
+    name
+}
+
+class BootstrapProcess {
+    source
+}
+
+BackofficeOperator "1" -- "*" AircraftEngineModel : registers >
+BootstrapProcess "1" -- "*" AircraftEngineModel : initializes >
+AircraftEngineModel "*" -- "1" EngineManufacturer : made by >
+AircraftEngineModel "*" -- "1" EngineType : has >
+AircraftEngineModel "*" -- "1" FuelType : uses >
+
+@enduml

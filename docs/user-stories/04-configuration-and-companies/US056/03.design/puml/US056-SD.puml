@@ -1,0 +1,139 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RegisterAircraftEngineModelUI" as UI
+participant "RegisterAircraftEngineModelController" as CTRL
+participant "RegisterAircraftEngineModelService" as Service
+participant "AuthorizationService" as AuthzService
+participant "ManufacturerRepository" as ManufacturerRepo
+participant "EngineModelName" as EngineModelName
+participant "EngineType" as EngineType
+participant "Power" as Power
+participant "FuelType" as FuelType
+participant "Efficiency" as Efficiency
+participant "AircraftEngineModelRepository" as EngineRepo
+participant "AircraftEngineModel:\n engineModel" as EngineModel
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to register an aircraft engine model
+
+activate UI
+UI --> BackofficeOperator : Requests engine model data
+deactivate UI
+
+BackofficeOperator -> UI : Provides engine model data
+
+activate UI
+UI -> CTRL : registerAircraftEngineModel(request)
+
+activate CTRL
+CTRL -> Service : registerAircraftEngineModel(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_ENGINE_MODEL)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> ManufacturerRepo : findByName(request.manufacturerName)
+
+    activate ManufacturerRepo
+    ManufacturerRepo --> Service : Optional<Manufacturer>
+    deactivate ManufacturerRepo
+
+    alt manufacturer exists
+
+        Service -> EngineModelName ** : EngineModelName(request.modelName)
+
+        activate EngineModelName
+        EngineModelName --> Service : modelName
+        deactivate EngineModelName
+
+        Service -> EngineType ** : EngineType(request.engineType)
+
+        activate EngineType
+        EngineType --> Service : engineType
+        deactivate EngineType
+
+        Service -> Power ** : Power(request.power)
+
+        activate Power
+        Power --> Service : power
+        deactivate Power
+
+        Service -> FuelType ** : FuelType(request.fuelType)
+
+        activate FuelType
+        FuelType --> Service : fuelType
+        deactivate FuelType
+
+        Service -> Efficiency ** : Efficiency(request.efficiency)
+
+        activate Efficiency
+        Efficiency --> Service : efficiency
+        deactivate Efficiency
+
+        Service -> EngineRepo : existsByNameAndManufacturer(modelName, manufacturer)
+
+        activate EngineRepo
+        EngineRepo --> Service : true/false
+        deactivate EngineRepo
+
+        alt model name and manufacturer combination is unique
+
+            Service -> EngineModel ** : AircraftEngineModel(modelName, manufacturer,\nengineType, power, fuelType, efficiency)
+
+            activate EngineModel
+            EngineModel --> Service : engineModel
+            deactivate EngineModel
+
+            Service -> EngineRepo : save(engineModel)
+
+            activate EngineRepo
+            EngineRepo --> Service : saved
+            deactivate EngineRepo
+
+            Service --> CTRL : AircraftEngineModelDTO
+            CTRL --> UI : Registration successful
+            UI --> BackofficeOperator : Display success message
+
+        else model name and manufacturer combination already exists
+
+            Service --> CTRL : Registration failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display duplicated engine model error
+
+        end
+
+    else manufacturer does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display manufacturer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml
