@@ -1,0 +1,37 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to register an air control area
+
+activate System
+System --> BackofficeOperator : Requests area code and geographic boundaries
+deactivate System
+
+BackofficeOperator -> System : Provides air control area data
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate area code
+System --> System : Check if area code already exists
+System --> System : Validate geographic boundaries
+
+alt air control area data is valid
+    System --> System : Register air control area
+    System --> BackofficeOperator : Air control area registered successfully
+else air control area data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

@@ -1,0 +1,126 @@
+@startuml
+title US050-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RegisterAirControlAreaUI {
+        - areaCode: String
+        - name: String
+        - boundaryCoordinates: List<String>
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterAirControlAreaController {
+        + registerAirControlArea(request: RegisterAirControlAreaRequest): AirControlAreaDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterAirControlAreaService {
+        + registerAirControlArea(request: RegisterAirControlAreaRequest): AirControlAreaDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterAirControlAreaRequest {
+        - areaCode: String
+        - name: String
+        - coordinates: List<CoordinateDTO>
+    }
+
+    class CoordinateDTO {
+        - latitude: double
+        - longitude: double
+    }
+
+    class AirControlAreaDTO {
+        - areaCode: String
+        - name: String
+    }
+
+    class BootstrapAirControlAreaLoader {
+        + loadDefaultAirControlAreas(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirControlArea {
+        - code: AreaCode
+        - name: String
+        - boundary: GeographicBoundary
+        + AirControlArea(code: AreaCode, name: String, boundary: GeographicBoundary)
+    }
+
+    class AreaCode {
+        - value: String
+        + AreaCode(value: String)
+    }
+
+    class GeographicBoundary {
+        - coordinates: List<Coordinate>
+        + GeographicBoundary(coordinates: List<Coordinate>)
+        + isValid(): boolean
+    }
+
+    class Coordinate {
+        - latitude: double
+        - longitude: double
+        + Coordinate(latitude: double, longitude: double)
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirControlAreaRepository {
+        + existsByCode(code: AreaCode): boolean
+        + save(area: AirControlArea): void
+        + findByCode(code: AreaCode): Optional<AirControlArea>
+    }
+}
+
+RegisterAirControlAreaUI --> RegisterAirControlAreaController : uses >
+RegisterAirControlAreaController --> RegisterAirControlAreaService : uses >
+RegisterAirControlAreaService --> AuthorizationService : checks permission >
+RegisterAirControlAreaService --> AirControlAreaRepository : checks/saves >
+RegisterAirControlAreaService --> AirControlArea : creates >
+RegisterAirControlAreaService --> AirControlAreaDTO : returns >
+BootstrapAirControlAreaLoader --> RegisterAirControlAreaService : uses >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirControlArea *-- AreaCode
+AirControlArea *-- GeographicBoundary
+GeographicBoundary "1" o-- "3..*" Coordinate
+
+@enduml

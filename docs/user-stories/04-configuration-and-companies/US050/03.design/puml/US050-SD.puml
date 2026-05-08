@@ -1,0 +1,109 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RegisterAirControlAreaUI" as UI
+participant "RegisterAirControlAreaController" as CTRL
+participant "RegisterAirControlAreaService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AreaCode" as AreaCode
+participant "AirControlAreaRepository" as AreaRepo
+participant "Coordinate" as Coordinate
+participant "GeographicBoundary" as Boundary
+participant "AirControlArea:\n area" as Area
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to register an air control area
+
+activate UI
+UI --> BackofficeOperator : Requests area code and geographic boundaries
+deactivate UI
+
+BackofficeOperator -> UI : Provides air control area data
+
+activate UI
+UI -> CTRL : registerAirControlArea(request)
+
+activate CTRL
+CTRL -> Service : registerAirControlArea(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_AIR_CONTROL_AREA)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> AreaCode ** : AreaCode(request.areaCode)
+
+    activate AreaCode
+    AreaCode --> Service : areaCode
+    deactivate AreaCode
+
+    Service -> AreaRepo : existsByCode(areaCode)
+
+    activate AreaRepo
+    AreaRepo --> Service : true/false
+    deactivate AreaRepo
+
+    alt area code does not exist
+
+        loop for each coordinate
+            Service -> Coordinate ** : Coordinate(latitude, longitude)
+            activate Coordinate
+            Coordinate --> Service : coordinate
+            deactivate Coordinate
+        end
+
+        Service -> Boundary ** : GeographicBoundary(coordinates)
+
+        activate Boundary
+        Boundary --> Service : boundary
+        deactivate Boundary
+
+        Service -> Area ** : AirControlArea(areaCode, name, boundary)
+
+        activate Area
+        Area --> Service : area
+        deactivate Area
+
+        Service -> AreaRepo : save(area)
+
+        activate AreaRepo
+        AreaRepo --> Service : saved
+        deactivate AreaRepo
+
+        Service --> CTRL : AirControlAreaDTO
+        CTRL --> UI : Registration successful
+        UI --> BackofficeOperator : Display success message
+
+    else area code already exists
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display duplicated code error
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

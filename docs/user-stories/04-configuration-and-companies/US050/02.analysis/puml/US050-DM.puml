@@ -1,0 +1,45 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class AreaCode {
+    value
+}
+
+class GeographicBoundary {
+    coordinates
+}
+
+class Coordinate {
+    latitude
+    longitude
+}
+
+class BootstrapProcess {
+    source
+}
+
+BackofficeOperator "1" -- "*" AirControlArea : registers >
+BootstrapProcess "1" -- "*" AirControlArea : initializes >
+AirControlArea "1" -- "1" AreaCode : identified by >
+AirControlArea "1" -- "1" GeographicBoundary : has >
+GeographicBoundary "1" o-- "3..*" Coordinate : defined by >
+
+@enduml
