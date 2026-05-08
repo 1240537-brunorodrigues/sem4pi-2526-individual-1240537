@@ -1,0 +1,64 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class User {
+    email
+    role
+}
+
+class WeatherPerson {
+}
+
+class Pilot {
+}
+
+class FlightControlOperator {
+}
+
+class WeatherQuery {
+    date
+    airControlArea
+}
+
+class WeatherData {
+    dateTime
+    windDirection
+    windSpeed
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class Wind {
+    direction
+    speed
+}
+
+class WeatherSource {
+    type
+    providerName
+}
+
+User <|-- WeatherPerson
+User <|-- Pilot
+User <|-- FlightControlOperator
+
+User "1" -- "*" WeatherQuery : performs >
+WeatherQuery "*" -- "1" AirControlArea : targets >
+WeatherQuery "1" -- "*" WeatherData : returns >
+WeatherData "*" -- "1" AirControlArea : belongs to >
+WeatherData "1" -- "1" Wind : contains >
+WeatherData "*" -- "1" WeatherSource : has >
+
+@enduml

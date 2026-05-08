@@ -1,0 +1,120 @@
+@startuml
+title US043-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ConsultWeatherDataUI {
+        - airControlAreaCode: String
+        - date: LocalDate
+        + requestData()
+        + displayWeatherData(weatherData: List<WeatherDataDTO>)
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ConsultWeatherDataController {
+        + consultWeatherData(request: ConsultWeatherDataRequest): List<WeatherDataDTO>
+    }
+}
+
+package "application" #DDDDDD {
+    class ConsultWeatherDataService {
+        + consultWeatherData(request: ConsultWeatherDataRequest): List<WeatherDataDTO>
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class ConsultWeatherDataRequest {
+        - airControlAreaCode: String
+        - date: LocalDate
+    }
+
+    class WeatherDataDTO {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windDirection: double
+        - windSpeed: double
+        - sourceType: String
+        - sourceDescription: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirControlArea {
+        - code: String
+        - name: String
+        - geographicBoundaries: String
+    }
+
+    class WeatherData {
+        - airControlArea: AirControlArea
+        - dateTime: LocalDateTime
+        - wind: Wind
+        - source: WeatherSource
+    }
+
+    class Wind {
+        - direction: double
+        - speed: double
+    }
+
+    class WeatherSource {
+        - type: String
+        - description: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirControlAreaRepository {
+        + findByCode(code: String): Optional<AirControlArea>
+    }
+
+    interface WeatherDataRepository {
+        + findByAreaAndDate(area: AirControlArea, date: LocalDate): List<WeatherData>
+    }
+}
+
+ConsultWeatherDataUI --> ConsultWeatherDataController : uses >
+ConsultWeatherDataController --> ConsultWeatherDataService : uses >
+ConsultWeatherDataService --> AuthorizationService : checks permission >
+ConsultWeatherDataService --> AirControlAreaRepository : verifies area >
+ConsultWeatherDataService --> WeatherDataRepository : retrieves >
+ConsultWeatherDataService --> WeatherDataDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+WeatherData "*" --> "1" AirControlArea
+WeatherData *-- Wind
+WeatherData *-- WeatherSource
+
+@enduml

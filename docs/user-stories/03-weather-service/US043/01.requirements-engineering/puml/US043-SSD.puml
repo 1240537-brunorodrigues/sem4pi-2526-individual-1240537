@@ -1,0 +1,38 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Weather Person / Pilot / FCO" as User
+participant ":System" as System
+
+activate User
+
+User -> System : Requests to consult weather data
+
+activate System
+System --> User : Requests air control area and date
+deactivate System
+
+User -> System : Provides air control area and date
+
+activate System
+System --> System : Check if user is authorized
+System --> System : Validate air control area
+System --> System : Validate date
+System --> System : Search weather data
+
+alt weather data exists
+    System --> User : Display weather data
+else no weather data exists
+    System --> User : Display no weather data found message
+else user is not authorized
+    System --> User : Display access denied message
+end
+
+deactivate System
+deactivate User
+
+@enduml

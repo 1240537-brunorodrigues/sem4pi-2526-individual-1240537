@@ -1,0 +1,96 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Weather Person / Pilot / FCO" as User
+participant "ConsultWeatherDataUI" as UI
+participant "ConsultWeatherDataController" as CTRL
+participant "ConsultWeatherDataService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirControlAreaRepository" as AreaRepo
+participant "WeatherDataRepository" as WeatherRepo
+participant "WeatherDataDTO" as WeatherDTO
+
+activate User
+
+User -> UI : Requests to consult weather data
+
+activate UI
+UI --> User : Requests air control area and date
+deactivate UI
+
+User -> UI : Provides air control area and date
+
+activate UI
+UI -> CTRL : consultWeatherData(request)
+
+activate CTRL
+CTRL -> Service : consultWeatherData(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, CONSULT_WEATHER_DATA)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt user is authorized
+
+    Service -> AreaRepo : findByCode(request.airControlAreaCode)
+
+    activate AreaRepo
+    AreaRepo --> Service : Optional<AirControlArea>
+    deactivate AreaRepo
+
+    alt air control area exists
+
+        Service -> WeatherRepo : findByAreaAndDate(area, request.date)
+
+        activate WeatherRepo
+        WeatherRepo --> Service : List<WeatherData>
+        deactivate WeatherRepo
+
+        alt weather data exists
+
+            loop for each weather data
+                Service -> WeatherDTO ** : WeatherDataDTO(weatherData)
+            end
+
+            Service --> CTRL : List<WeatherDataDTO>
+            CTRL --> UI : List<WeatherDataDTO>
+            UI --> User : Display weather data
+
+        else no weather data exists
+
+            Service --> CTRL : Empty list
+            CTRL --> UI : Empty list
+            UI --> User : Display no weather data found message
+
+        end
+
+    else air control area does not exist
+
+        Service --> CTRL : Consultation failed
+        CTRL --> UI : Error
+        UI --> User : Display area not found message
+
+    end
+
+else user is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> User : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate User
+
+@enduml
