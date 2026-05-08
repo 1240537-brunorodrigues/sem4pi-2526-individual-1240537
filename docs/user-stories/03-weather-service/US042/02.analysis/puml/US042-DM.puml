@@ -1,0 +1,64 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class WeatherPerson {
+    email
+}
+
+class BulkWeatherImport {
+    importDateTime
+    sourceType
+}
+
+class WeatherData {
+    dateTime
+    windDirection
+    windSpeed
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class Wind {
+    direction
+    speed
+}
+
+class WeatherSource {
+    type
+    providerName
+}
+
+class WeatherImportReport {
+    totalRecords
+    successfulRecords
+    failedRecords
+}
+
+class ValidationError {
+    recordNumber
+    message
+}
+
+WeatherPerson "1" -- "*" BulkWeatherImport : performs >
+BulkWeatherImport "1" -- "*" WeatherData : imports >
+BulkWeatherImport "1" -- "1" WeatherSource : uses >
+BulkWeatherImport "1" -- "1" WeatherImportReport : produces >
+WeatherImportReport "1" o-- "*" ValidationError : contains >
+
+WeatherData "*" -- "1" AirControlArea : belongs to >
+WeatherData "1" -- "1" Wind : contains >
+WeatherData "*" -- "1" WeatherSource : has >
+
+@enduml

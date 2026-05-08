@@ -1,0 +1,160 @@
+@startuml
+title US042-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ImportBulkWeatherDataUI {
+        - sourceType: String
+        - filePath: String
+        + requestData()
+        + displayReport(report: WeatherImportReportDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ImportBulkWeatherDataController {
+        + importWeatherData(request: ImportBulkWeatherDataRequest): WeatherImportReportDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class ImportBulkWeatherDataService {
+        + importWeatherData(request: ImportBulkWeatherDataRequest): WeatherImportReportDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    interface WeatherDataImporter {
+        + supports(sourceType: String): boolean
+        + importRecords(source: String): List<ImportedWeatherRecord>
+    }
+
+    class CsvWeatherDataImporter {
+        + supports(sourceType: String): boolean
+        + importRecords(source: String): List<ImportedWeatherRecord>
+    }
+
+    class WeatherRecordValidator {
+        + validate(record: ImportedWeatherRecord): List<ValidationError>
+    }
+
+    class ImportBulkWeatherDataRequest {
+        - sourceType: String
+        - sourcePath: String
+    }
+
+    class ImportedWeatherRecord {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windDirection: double
+        - windSpeed: double
+        - sourceDescription: String
+        - recordNumber: int
+    }
+
+    class WeatherImportReportDTO {
+        - totalRecords: int
+        - successfulRecords: int
+        - failedRecords: int
+        - errors: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirControlArea {
+        - code: String
+        - name: String
+    }
+
+    class WeatherData {
+        - airControlArea: AirControlArea
+        - dateTime: LocalDateTime
+        - wind: Wind
+        - source: WeatherSource
+    }
+
+    class Wind {
+        - direction: double
+        - speed: double
+        + Wind(direction: double, speed: double)
+    }
+
+    class WeatherSource {
+        - type: String
+        - description: String
+    }
+
+    class WeatherImportReport {
+        - totalRecords: int
+        - successfulRecords: int
+        - failedRecords: int
+        - validationErrors: List<ValidationError>
+        + addSuccess(): void
+        + addError(error: ValidationError): void
+    }
+
+    class ValidationError {
+        - recordNumber: int
+        - message: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirControlAreaRepository {
+        + findByCode(code: String): Optional<AirControlArea>
+    }
+
+    interface WeatherDataRepository {
+        + save(weatherData: WeatherData): void
+        + saveAll(weatherData: List<WeatherData>): void
+    }
+}
+
+ImportBulkWeatherDataUI --> ImportBulkWeatherDataController : uses >
+ImportBulkWeatherDataController --> ImportBulkWeatherDataService : uses >
+ImportBulkWeatherDataService --> AuthorizationService : checks permission >
+ImportBulkWeatherDataService --> WeatherDataImporter : imports records >
+WeatherDataImporter <|.. CsvWeatherDataImporter
+ImportBulkWeatherDataService --> WeatherRecordValidator : validates >
+ImportBulkWeatherDataService --> AirControlAreaRepository : verifies areas >
+ImportBulkWeatherDataService --> WeatherDataRepository : saves valid records >
+ImportBulkWeatherDataService --> WeatherImportReport : creates >
+ImportBulkWeatherDataService --> WeatherImportReportDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+WeatherData "*" --> "1" AirControlArea
+WeatherData *-- Wind
+WeatherData *-- WeatherSource
+WeatherImportReport "1" o-- "*" ValidationError
+
+@enduml

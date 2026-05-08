@@ -1,0 +1,117 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant "ImportBulkWeatherDataUI" as UI
+participant "ImportBulkWeatherDataController" as CTRL
+participant "ImportBulkWeatherDataService" as Service
+participant "AuthorizationService" as AuthzService
+participant "WeatherDataImporter" as Importer
+participant "WeatherRecordValidator" as Validator
+participant "AirControlAreaRepository" as AreaRepo
+participant "WeatherData:\n weatherData" as WeatherData
+participant "WeatherDataRepository" as WeatherRepo
+participant "WeatherImportReport" as Report
+
+activate WeatherPerson
+
+WeatherPerson -> UI : Requests to import bulk weather data
+
+activate UI
+UI --> WeatherPerson : Requests source type and file
+deactivate UI
+
+WeatherPerson -> UI : Provides source type and file
+
+activate UI
+UI -> CTRL : importWeatherData(request)
+
+activate CTRL
+CTRL -> Service : importWeatherData(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, IMPORT_WEATHER_DATA)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Weather Person is authorized
+
+    Service -> Importer : importRecords(request.sourcePath)
+
+    activate Importer
+    Importer --> Service : List<ImportedWeatherRecord>
+    deactivate Importer
+
+    Service -> Report ** : WeatherImportReport(totalRecords)
+
+    loop for each imported record
+
+        Service -> Validator : validate(record)
+
+        activate Validator
+        Validator --> Service : List<ValidationError>
+        deactivate Validator
+
+        alt record has no basic validation errors
+
+            Service -> AreaRepo : findByCode(record.airControlAreaCode)
+
+            activate AreaRepo
+            AreaRepo --> Service : Optional<AirControlArea>
+            deactivate AreaRepo
+
+            alt air control area exists
+
+                Service -> WeatherData ** : WeatherData(area, dateTime, wind, source)
+
+                activate WeatherData
+                WeatherData --> Service : weatherData
+                deactivate WeatherData
+
+                Service -> WeatherRepo : save(weatherData)
+
+                activate WeatherRepo
+                WeatherRepo --> Service : saved
+                deactivate WeatherRepo
+
+                Service -> Report : addSuccess()
+
+            else air control area does not exist
+
+                Service -> Report : addError(recordNumber, "Air control area not found")
+
+            end
+
+        else record has validation errors
+
+            Service -> Report : addErrors(validationErrors)
+
+        end
+
+    end
+
+    Service --> CTRL : WeatherImportReportDTO
+    CTRL --> UI : Import report
+    UI --> WeatherPerson : Display import summary
+
+else Weather Person is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> WeatherPerson : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate WeatherPerson
+
+@enduml

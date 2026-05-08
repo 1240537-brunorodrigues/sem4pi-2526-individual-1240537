@@ -1,0 +1,41 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant ":System" as System
+
+activate WeatherPerson
+
+WeatherPerson -> System : Requests to import bulk weather data
+
+activate System
+System --> WeatherPerson : Requests weather data source and file
+deactivate System
+
+WeatherPerson -> System : Provides source type and file
+
+activate System
+System --> System : Check if Weather Person is authorized
+System --> System : Validate file format
+System --> System : Read weather records
+System --> System : Validate each weather record
+System --> System : Check referenced air control areas
+
+alt file is valid and contains valid records
+    System --> System : Import valid weather records
+    System --> WeatherPerson : Display import summary
+else file is invalid
+    System --> WeatherPerson : Display file format error message
+else some records are invalid
+    System --> System : Import valid records
+    System --> WeatherPerson : Display partial import summary and validation errors
+end
+
+deactivate System
+deactivate WeatherPerson
+
+@enduml
