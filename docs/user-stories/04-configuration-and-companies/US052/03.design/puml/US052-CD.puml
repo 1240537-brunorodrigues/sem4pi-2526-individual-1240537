@@ -1,0 +1,168 @@
+@startuml
+title US052-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "console" #DDDDDD {
+    class RegisterAirportUI {
+        - name: String
+        - town: String
+        - country: String
+        - iataCode: String
+        - icaoCode: String
+        - latitude: double
+        - longitude: double
+        - elevation: double
+        - airControlAreaCode: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterAirportController {
+        + registerAirport(request: RegisterAirportRequest): AirportDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterAirportService {
+        + registerAirport(request: RegisterAirportRequest): AirportDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterAirportRequest {
+        - name: String
+        - town: String
+        - country: String
+        - iataCode: String
+        - icaoCode: String
+        - latitude: double
+        - longitude: double
+        - elevation: double
+        - airControlAreaCode: String
+    }
+
+    class AirportDTO {
+        - name: String
+        - town: String
+        - country: String
+        - iataCode: String
+        - icaoCode: String
+        - latitude: double
+        - longitude: double
+        - elevation: double
+        - airControlAreaCode: String
+    }
+
+    class BootstrapAirportLoader {
+        + loadDefaultAirports(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Airport {
+        - name: String
+        - town: String
+        - country: Country
+        - iataCode: IATACode
+        - icaoCode: ICAOCode
+        - coordinate: Coordinate
+        - elevation: double
+        - airControlArea: AirControlArea
+        + Airport(...)
+    }
+
+    class AirControlArea {
+        - code: AreaCode
+        - name: String
+    }
+
+    class AreaCode {
+        - value: String
+    }
+
+    class IATACode {
+        - value: String
+        + IATACode(value: String)
+    }
+
+    class ICAOCode {
+        - value: String
+        + ICAOCode(value: String)
+    }
+
+    class Coordinate {
+        - latitude: double
+        - longitude: double
+        + Coordinate(latitude: double, longitude: double)
+    }
+
+    class Country {
+        - name: String
+        - code: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirportRepository {
+        + existsByIATACode(code: IATACode): boolean
+        + existsByICAOCode(code: ICAOCode): boolean
+        + save(airport: Airport): void
+        + findByIATACode(code: IATACode): Optional<Airport>
+        + findByICAOCode(code: ICAOCode): Optional<Airport>
+    }
+
+    interface AirControlAreaRepository {
+        + findByCode(code: AreaCode): Optional<AirControlArea>
+    }
+}
+
+RegisterAirportUI --> RegisterAirportController : uses >
+RegisterAirportController --> RegisterAirportService : uses >
+RegisterAirportService --> AuthorizationService : checks permission >
+RegisterAirportService --> AirControlAreaRepository : verifies area >
+RegisterAirportService --> AirportRepository : checks/saves >
+RegisterAirportService --> Airport : creates >
+RegisterAirportService --> AirportDTO : returns >
+BootstrapAirportLoader --> RegisterAirportService : uses >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+Airport "*" --> "1" AirControlArea
+Airport *-- IATACode
+Airport *-- ICAOCode
+Airport *-- Coordinate
+Airport *-- Country
+AirControlArea *-- AreaCode
+
+@enduml

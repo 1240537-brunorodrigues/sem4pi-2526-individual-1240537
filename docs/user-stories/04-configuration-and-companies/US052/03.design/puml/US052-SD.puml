@@ -1,0 +1,145 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RegisterAirportUI" as UI
+participant "RegisterAirportController" as CTRL
+participant "RegisterAirportService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AreaCode" as AreaCode
+participant "AirControlAreaRepository" as AreaRepo
+participant "IATACode" as IATACode
+participant "ICAOCode" as ICAOCode
+participant "AirportRepository" as AirportRepo
+participant "Coordinate" as Coordinate
+participant "Country" as Country
+participant "Airport:\n airport" as Airport
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to register an airport
+
+activate UI
+UI --> BackofficeOperator : Requests airport data and air control area
+deactivate UI
+
+BackofficeOperator -> UI : Provides airport data
+
+activate UI
+UI -> CTRL : registerAirport(request)
+
+activate CTRL
+CTRL -> Service : registerAirport(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_AIRPORT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> AreaCode ** : AreaCode(request.airControlAreaCode)
+
+    activate AreaCode
+    AreaCode --> Service : areaCode
+    deactivate AreaCode
+
+    Service -> AreaRepo : findByCode(areaCode)
+
+    activate AreaRepo
+    AreaRepo --> Service : Optional<AirControlArea>
+    deactivate AreaRepo
+
+    alt air control area exists
+
+        Service -> IATACode ** : IATACode(request.iataCode)
+
+        activate IATACode
+        IATACode --> Service : iataCode
+        deactivate IATACode
+
+        Service -> ICAOCode ** : ICAOCode(request.icaoCode)
+
+        activate ICAOCode
+        ICAOCode --> Service : icaoCode
+        deactivate ICAOCode
+
+        Service -> AirportRepo : existsByIATACode(iataCode)
+
+        activate AirportRepo
+        AirportRepo --> Service : true/false
+        deactivate AirportRepo
+
+        Service -> AirportRepo : existsByICAOCode(icaoCode)
+
+        activate AirportRepo
+        AirportRepo --> Service : true/false
+        deactivate AirportRepo
+
+        alt IATA and ICAO codes are unique
+
+            Service -> Coordinate ** : Coordinate(latitude, longitude)
+
+            activate Coordinate
+            Coordinate --> Service : coordinate
+            deactivate Coordinate
+
+            Service -> Country ** : Country(request.country)
+
+            activate Country
+            Country --> Service : country
+            deactivate Country
+
+            Service -> Airport ** : Airport(name, town, country, iataCode,\nicaoCode, coordinate, elevation, area)
+
+            activate Airport
+            Airport --> Service : airport
+            deactivate Airport
+
+            Service -> AirportRepo : save(airport)
+
+            activate AirportRepo
+            AirportRepo --> Service : saved
+            deactivate AirportRepo
+
+            Service --> CTRL : AirportDTO
+            CTRL --> UI : Registration successful
+            UI --> BackofficeOperator : Display success message
+
+        else IATA or ICAO code already exists
+
+            Service --> CTRL : Registration failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display duplicated code error
+
+        end
+
+    else air control area does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display area not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

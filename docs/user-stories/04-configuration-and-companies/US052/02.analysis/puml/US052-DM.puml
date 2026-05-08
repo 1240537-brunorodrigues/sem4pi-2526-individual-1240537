@@ -1,0 +1,59 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class Airport {
+    name
+    town
+    country
+    elevation
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class IATACode {
+    value
+}
+
+class ICAOCode {
+    value
+}
+
+class Coordinate {
+    latitude
+    longitude
+}
+
+class Country {
+    name
+    code
+}
+
+class BootstrapProcess {
+    source
+}
+
+BackofficeOperator "1" -- "*" Airport : registers >
+BootstrapProcess "1" -- "*" Airport : initializes >
+Airport "*" -- "1" AirControlArea : belongs to >
+Airport "1" -- "1" IATACode : identified by >
+Airport "1" -- "1" ICAOCode : identified by >
+Airport "1" -- "1" Coordinate : located at >
+Airport "*" -- "1" Country : located in >
+
+@enduml

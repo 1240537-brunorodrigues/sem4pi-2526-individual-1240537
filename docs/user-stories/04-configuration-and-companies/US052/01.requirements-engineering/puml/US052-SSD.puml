@@ -1,0 +1,42 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to register an airport
+
+activate System
+System --> BackofficeOperator : Requests airport data and air control area
+deactivate System
+
+BackofficeOperator -> System : Provides airport data
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate air control area
+System --> System : Validate airport required data
+System --> System : Validate IATA code
+System --> System : Validate ICAO code
+System --> System : Check IATA code uniqueness
+System --> System : Check ICAO code uniqueness
+System --> System : Validate coordinates
+System --> System : Validate elevation
+
+alt airport data is valid
+    System --> System : Register airport
+    System --> BackofficeOperator : Airport registered successfully
+else airport data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml
