@@ -1,0 +1,70 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class WeatherPerson {
+    email
+}
+
+class RemoteWeatherClient {
+    connection
+}
+
+class TCPServer {
+    port
+}
+
+class RemoteRequest {
+    operation
+    payload
+}
+
+class RemoteResponse {
+    status
+    message
+    payload
+}
+
+class Authentication {
+    email
+    password
+}
+
+class Authorization {
+    permission
+}
+
+class WeatherOperation {
+    type
+}
+
+class WeatherData {
+    dateTime
+    windDirection
+    windSpeed
+}
+
+class WeatherImportReport {
+    totalRecords
+    successfulRecords
+    failedRecords
+}
+
+WeatherPerson "1" -- "1" RemoteWeatherClient : uses >
+RemoteWeatherClient "1" -- "1" TCPServer : communicates with >
+RemoteWeatherClient "1" -- "*" RemoteRequest : sends >
+TCPServer "1" -- "*" RemoteResponse : returns >
+RemoteRequest "*" -- "1" WeatherOperation : requests >
+RemoteRequest "*" -- "0..1" Authentication : may contain >
+WeatherOperation "*" -- "*" WeatherData : manages >
+WeatherOperation "*" -- "0..1" WeatherImportReport : may produce >
+Authorization "*" -- "1" WeatherOperation : protects >
+
+@enduml

@@ -1,0 +1,146 @@
+@startuml
+title US044-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "remote.client" #DDDDDD {
+    class WeatherRemoteClientUI {
+        + requestCredentials()
+        + requestOperation()
+        + displayResponse(response: RemoteResponse)
+        + displayError(message: String)
+    }
+
+    class WeatherTcpClient {
+        - host: String
+        - port: int
+        + connect(): void
+        + send(request: RemoteRequest): RemoteResponse
+        + disconnect(): void
+    }
+}
+
+package "remote.server" #DDDDDD {
+    class WeatherTcpServer {
+        - port: int
+        + start(): void
+        + stop(): void
+        + acceptConnections(): void
+    }
+
+    class WeatherClientHandler {
+        + handleClientConnection(): void
+    }
+
+    class WeatherRequestHandler {
+        + handle(request: RemoteRequest): RemoteResponse
+    }
+
+    class RemoteRequest {
+        - operation: String
+        - payload: String
+        - authToken: String
+    }
+
+    class RemoteResponse {
+        - status: String
+        - message: String
+        - payload: String
+    }
+}
+
+package "application" #DDDDDD {
+    class RemoteAuthenticationService {
+        + authenticate(email: String, password: String): AuthenticatedUserSession
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterWeatherDataService {
+        + registerWeatherData(request: RegisterWeatherDataRequest): WeatherDataDTO
+    }
+
+    class ImportBulkWeatherDataService {
+        + importWeatherData(request: ImportBulkWeatherDataRequest): WeatherImportReportDTO
+    }
+
+    class ConsultWeatherDataService {
+        + consultWeatherData(request: ConsultWeatherDataRequest): List<WeatherDataDTO>
+    }
+
+    class AuthenticatedUserSession {
+        - user: User
+        - token: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class WeatherData {
+        - dateTime: LocalDateTime
+        - wind: Wind
+        - source: WeatherSource
+    }
+
+    class Wind {
+        - direction: double
+        - speed: double
+    }
+
+    class WeatherSource {
+        - type: String
+        - description: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+WeatherRemoteClientUI --> WeatherTcpClient : uses >
+WeatherTcpClient --> RemoteRequest : sends >
+WeatherTcpClient --> RemoteResponse : receives >
+
+WeatherTcpServer --> WeatherClientHandler : creates >
+WeatherClientHandler --> WeatherRequestHandler : delegates >
+WeatherRequestHandler --> RemoteAuthenticationService : authenticates >
+WeatherRequestHandler --> AuthorizationService : checks permission >
+WeatherRequestHandler --> RegisterWeatherDataService : dispatches register >
+WeatherRequestHandler --> ImportBulkWeatherDataService : dispatches import >
+WeatherRequestHandler --> ConsultWeatherDataService : dispatches consult >
+WeatherRequestHandler --> RemoteResponse : creates >
+
+RemoteAuthenticationService --> AuthenticatedUserSession : creates >
+AuthenticatedUserSession --> User : contains >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+RegisterWeatherDataService --> WeatherData : creates >
+ImportBulkWeatherDataService --> WeatherData : creates >
+ConsultWeatherDataService --> WeatherData : retrieves >
+WeatherData *-- Wind
+WeatherData *-- WeatherSource
+
+@enduml

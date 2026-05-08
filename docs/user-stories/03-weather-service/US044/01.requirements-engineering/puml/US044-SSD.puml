@@ -1,0 +1,56 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant "TCP Client Application" as Client
+participant ":System" as System
+
+activate WeatherPerson
+
+WeatherPerson -> Client : Opens remote weather client
+
+activate Client
+Client --> WeatherPerson : Requests authentication data
+deactivate Client
+
+WeatherPerson -> Client : Provides email and password
+
+activate Client
+Client -> System : Sends authentication request through TCP
+
+activate System
+System --> System : Validate credentials
+System --> System : Check Weather Person authorization
+
+alt authentication and authorization are valid
+    System --> Client : Authentication successful
+    Client --> WeatherPerson : Display available weather operations
+
+    WeatherPerson -> Client : Selects weather operation and provides data
+    Client -> System : Sends operation request through TCP
+
+    System --> System : Validate request
+    System --> System : Execute requested weather operation
+
+    alt operation succeeds
+        System --> Client : Sends success response
+        Client --> WeatherPerson : Display operation result
+    else operation fails
+        System --> Client : Sends error response
+        Client --> WeatherPerson : Display error message
+    end
+
+else authentication or authorization fails
+    System --> Client : Authentication or authorization failed
+    Client --> WeatherPerson : Display access denied message
+end
+
+deactivate System
+deactivate Client
+deactivate WeatherPerson
+
+@enduml

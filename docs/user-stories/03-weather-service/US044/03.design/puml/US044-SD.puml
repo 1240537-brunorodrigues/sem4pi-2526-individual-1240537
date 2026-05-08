@@ -1,0 +1,125 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Weather Person" as WeatherPerson
+participant "WeatherRemoteClientUI" as ClientUI
+participant "WeatherTcpClient" as TcpClient
+participant "WeatherTcpServer" as TcpServer
+participant "WeatherClientHandler" as ClientHandler
+participant "WeatherRequestHandler" as RequestHandler
+participant "RemoteAuthenticationService" as AuthService
+participant "AuthorizationService" as AuthzService
+participant "RegisterWeatherDataService" as RegisterService
+participant "ImportBulkWeatherDataService" as ImportService
+participant "ConsultWeatherDataService" as ConsultService
+
+activate WeatherPerson
+
+WeatherPerson -> ClientUI : Opens remote weather client
+
+activate ClientUI
+ClientUI --> WeatherPerson : Requests email and password
+deactivate ClientUI
+
+WeatherPerson -> ClientUI : Provides credentials
+
+activate ClientUI
+ClientUI -> TcpClient : connect()
+activate TcpClient
+TcpClient -> TcpServer : Open TCP connection
+
+activate TcpServer
+TcpServer -> ClientHandler ** : handleClientConnection()
+activate ClientHandler
+
+ClientUI -> TcpClient : send(authenticationRequest)
+TcpClient -> ClientHandler : Send authentication request
+
+ClientHandler -> RequestHandler : handle(authenticationRequest)
+
+activate RequestHandler
+RequestHandler -> AuthService : authenticate(email, password)
+
+activate AuthService
+AuthService --> RequestHandler : AuthenticatedUserSession / error
+deactivate AuthService
+
+alt authentication succeeds
+
+    RequestHandler --> ClientHandler : RemoteResponse(success, token)
+    ClientHandler --> TcpClient : Send response
+    TcpClient --> ClientUI : RemoteResponse(success)
+    ClientUI --> WeatherPerson : Display available weather operations
+
+    WeatherPerson -> ClientUI : Selects operation and provides data
+    ClientUI -> TcpClient : send(operationRequest)
+
+    TcpClient -> ClientHandler : Send operation request
+    ClientHandler -> RequestHandler : handle(operationRequest)
+
+    RequestHandler -> AuthzService : isAuthorized(user, requiredPermission)
+
+    activate AuthzService
+    AuthzService --> RequestHandler : true/false
+    deactivate AuthzService
+
+    alt user is authorized
+
+        alt operation is register weather data
+            RequestHandler -> RegisterService : registerWeatherData(request)
+            activate RegisterService
+            RegisterService --> RequestHandler : WeatherDataDTO / error
+            deactivate RegisterService
+
+        else operation is import bulk weather data
+            RequestHandler -> ImportService : importWeatherData(request)
+            activate ImportService
+            ImportService --> RequestHandler : WeatherImportReportDTO / error
+            deactivate ImportService
+
+        else operation is consult weather data
+            RequestHandler -> ConsultService : consultWeatherData(request)
+            activate ConsultService
+            ConsultService --> RequestHandler : List<WeatherDataDTO> / error
+            deactivate ConsultService
+
+        else unsupported operation
+            RequestHandler --> ClientHandler : RemoteResponse(error, unsupported operation)
+        end
+
+        RequestHandler --> ClientHandler : RemoteResponse(operation result)
+        ClientHandler --> TcpClient : Send response
+        TcpClient --> ClientUI : RemoteResponse(operation result)
+        ClientUI --> WeatherPerson : Display operation result
+
+    else user is not authorized
+
+        RequestHandler --> ClientHandler : RemoteResponse(access denied)
+        ClientHandler --> TcpClient : Send response
+        TcpClient --> ClientUI : RemoteResponse(access denied)
+        ClientUI --> WeatherPerson : Display access denied message
+
+    end
+
+else authentication fails
+
+    RequestHandler --> ClientHandler : RemoteResponse(authentication failed)
+    ClientHandler --> TcpClient : Send response
+    TcpClient --> ClientUI : RemoteResponse(authentication failed)
+    ClientUI --> WeatherPerson : Display authentication error message
+
+end
+
+deactivate RequestHandler
+deactivate ClientHandler
+deactivate TcpServer
+deactivate TcpClient
+deactivate ClientUI
+deactivate WeatherPerson
+
+@enduml
