@@ -1,0 +1,161 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RemoveEngineModelFromAircraftModelUI" as UI
+participant "RemoveEngineModelFromAircraftModelController" as CTRL
+participant "RemoveEngineModelFromAircraftModelService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AircraftModelRepository" as AircraftModelRepo
+participant "AircraftEngineModelRepository" as EngineRepo
+participant "AircraftRepository" as AircraftRepo
+participant "AircraftConfigurationUsagePolicy" as UsagePolicy
+participant "AircraftModel:\n aircraftModel" as AircraftModel
+participant "AircraftModelRepository" as AircraftModelRepoSave
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to remove an engine model from an aircraft model
+
+activate UI
+UI --> BackofficeOperator : Requests aircraft model and engine model
+deactivate UI
+
+BackofficeOperator -> UI : Provides aircraft model and engine model
+
+activate UI
+UI -> CTRL : removeEngineModelFromAircraftModel(request)
+
+activate CTRL
+CTRL -> Service : removeEngineModelFromAircraftModel(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REMOVE_CERTIFIED_ENGINE_MODEL)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> AircraftModelRepo : findById(request.aircraftModelId)
+
+    activate AircraftModelRepo
+    AircraftModelRepo --> Service : Optional<AircraftModel>
+    deactivate AircraftModelRepo
+
+    alt aircraft model exists
+
+        Service -> EngineRepo : findById(request.engineModelId)
+
+        activate EngineRepo
+        EngineRepo --> Service : Optional<AircraftEngineModel>
+        deactivate EngineRepo
+
+        alt engine model exists
+
+            Service -> AircraftModel : hasCertifiedEngineModel(engineModel)
+
+            activate AircraftModel
+            AircraftModel --> Service : true/false
+            deactivate AircraftModel
+
+            alt engine model is certified for aircraft model
+
+                Service -> AircraftRepo : existsByConfiguration(aircraftModel, engineModel)
+
+                activate AircraftRepo
+                AircraftRepo --> Service : true/false
+                deactivate AircraftRepo
+
+                Service -> UsagePolicy : canRemoveEngineModel(aircraftModel, engineModel)
+
+                activate UsagePolicy
+                UsagePolicy --> Service : true/false
+                deactivate UsagePolicy
+
+                alt engine model is not used by actual aircraft
+
+                    Service -> AircraftModel : certifiedEngineModelCount()
+
+                    activate AircraftModel
+                    AircraftModel --> Service : count
+                    deactivate AircraftModel
+
+                    alt aircraft model will retain at least one certified engine
+
+                        Service -> AircraftModel : removeCertifiedEngineModel(engineModel)
+
+                        activate AircraftModel
+                        AircraftModel --> Service : engine model removed
+                        deactivate AircraftModel
+
+                        Service -> AircraftModelRepoSave : save(aircraftModel)
+
+                        activate AircraftModelRepoSave
+                        AircraftModelRepoSave --> Service : saved
+                        deactivate AircraftModelRepoSave
+
+                        Service --> CTRL : AircraftModelDTO
+                        CTRL --> UI : Operation successful
+                        UI --> BackofficeOperator : Display success message
+
+                    else aircraft model would have no certified engines
+
+                        Service --> CTRL : Operation failed
+                        CTRL --> UI : Error
+                        UI --> BackofficeOperator : Display minimum certified engine error
+
+                    end
+
+                else engine model is used by actual aircraft
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> BackofficeOperator : Display engine model in use error
+
+                end
+
+            else engine model is not certified for aircraft model
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> BackofficeOperator : Display engine model not certified error
+
+            end
+
+        else engine model does not exist
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display engine model not found message
+
+        end
+
+    else aircraft model does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display aircraft model not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to remove an engine model from an aircraft model
+
+activate System
+System --> BackofficeOperator : Requests aircraft model and certified engine model
+deactivate System
+
+BackofficeOperator -> System : Provides aircraft model and engine model
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate aircraft model
+System --> System : Validate aircraft engine model
+System --> System : Check if engine model is certified for aircraft model
+System --> System : Check if actual aircraft use this configuration
+System --> System : Check if aircraft model retains at least one certified engine
+
+alt engine model can be removed
+    System --> System : Remove engine model from certified engine list
+    System --> BackofficeOperator : Engine model removed successfully
+else engine model cannot be removed
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

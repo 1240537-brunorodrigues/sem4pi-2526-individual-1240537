@@ -1,0 +1,152 @@
+@startuml
+title US058-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "i.console" #DDDDDD {
+    class RemoveEngineModelFromAircraftModelUI {
+        - aircraftModelId: String
+        - engineModelId: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RemoveEngineModelFromAircraftModelController {
+        + removeEngineModelFromAircraftModel(request: RemoveEngineModelFromAircraftModelRequest): AircraftModelDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RemoveEngineModelFromAircraftModelService {
+        + removeEngineModelFromAircraftModel(request: RemoveEngineModelFromAircraftModelRequest): AircraftModelDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RemoveEngineModelFromAircraftModelRequest {
+        - aircraftModelId: String
+        - engineModelId: String
+    }
+
+    class AircraftModelDTO {
+        - aircraftModelId: String
+        - modelName: String
+        - certifiedEngineModels: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AircraftModel {
+        - id: String
+        - modelName: AircraftModelName
+        - aircraftType: AircraftType
+        - certifiedEngineModels: List<AircraftEngineModel>
+        + removeCertifiedEngineModel(engineModel: AircraftEngineModel): void
+        + hasCertifiedEngineModel(engineModel: AircraftEngineModel): boolean
+        + certifiedEngineModelCount(): int
+    }
+
+    class AircraftEngineModel {
+        - id: String
+        - modelName: EngineModelName
+        - engineType: EngineType
+    }
+
+    class Aircraft {
+        - registration: String
+        - operationalStatus: String
+        - configuration: AircraftConfiguration
+    }
+
+    class AircraftConfiguration {
+        - aircraftModel: AircraftModel
+        - engineModel: AircraftEngineModel
+    }
+
+    class AircraftConfigurationUsagePolicy {
+        + canRemoveEngineModel(aircraftModel: AircraftModel, engineModel: AircraftEngineModel): boolean
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class AircraftType {
+        - value: String
+    }
+
+    class EngineModelName {
+        - value: String
+    }
+
+    class EngineType {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AircraftModelRepository {
+        + findById(id: String): Optional<AircraftModel>
+        + save(aircraftModel: AircraftModel): void
+    }
+
+    interface AircraftEngineModelRepository {
+        + findById(id: String): Optional<AircraftEngineModel>
+    }
+
+    interface AircraftRepository {
+        + existsByConfiguration(aircraftModel: AircraftModel, engineModel: AircraftEngineModel): boolean
+    }
+}
+
+RemoveEngineModelFromAircraftModelUI --> RemoveEngineModelFromAircraftModelController : uses >
+RemoveEngineModelFromAircraftModelController --> RemoveEngineModelFromAircraftModelService : uses >
+RemoveEngineModelFromAircraftModelService --> AuthorizationService : checks permission >
+RemoveEngineModelFromAircraftModelService --> AircraftModelRepository : retrieves/saves >
+RemoveEngineModelFromAircraftModelService --> AircraftEngineModelRepository : retrieves >
+RemoveEngineModelFromAircraftModelService --> AircraftRepository : checks actual aircraft usage >
+RemoveEngineModelFromAircraftModelService --> AircraftConfigurationUsagePolicy : checks removal permission >
+RemoveEngineModelFromAircraftModelService --> AircraftModelDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AircraftModel "1" o-- "1..*" AircraftEngineModel
+AircraftModel *-- AircraftModelName
+AircraftModel *-- AircraftType
+AircraftEngineModel *-- EngineModelName
+AircraftEngineModel *-- EngineType
+Aircraft *-- AircraftConfiguration
+AircraftConfiguration --> AircraftModel
+AircraftConfiguration --> AircraftEngineModel
+
+@enduml
