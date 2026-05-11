@@ -1,0 +1,132 @@
+@startuml
+title US057-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class AddEngineModelToAircraftModelUI {
+        - aircraftModelId: String
+        - engineModelId: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class AddEngineModelToAircraftModelController {
+        + addEngineModelToAircraftModel(request: AddEngineModelToAircraftModelRequest): AircraftModelDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class AddEngineModelToAircraftModelService {
+        + addEngineModelToAircraftModel(request: AddEngineModelToAircraftModelRequest): AircraftModelDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class AddEngineModelToAircraftModelRequest {
+        - aircraftModelId: String
+        - engineModelId: String
+    }
+
+    class AircraftModelDTO {
+        - aircraftModelId: String
+        - modelName: String
+        - certifiedEngineModels: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AircraftModel {
+        - id: String
+        - modelName: AircraftModelName
+        - aircraftType: AircraftType
+        - certifiedEngineModels: List<AircraftEngineModel>
+        + addCertifiedEngineModel(engineModel: AircraftEngineModel): void
+        + hasCertifiedEngineModel(engineModel: AircraftEngineModel): boolean
+    }
+
+    class AircraftEngineModel {
+        - id: String
+        - modelName: EngineModelName
+        - engineType: EngineType
+    }
+
+    class EngineCompatibilityPolicy {
+        + isCompatible(aircraftModel: AircraftModel, engineModel: AircraftEngineModel): boolean
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class AircraftType {
+        - value: String
+    }
+
+    class EngineModelName {
+        - value: String
+    }
+
+    class EngineType {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AircraftModelRepository {
+        + findById(id: String): Optional<AircraftModel>
+        + save(aircraftModel: AircraftModel): void
+    }
+
+    interface AircraftEngineModelRepository {
+        + findById(id: String): Optional<AircraftEngineModel>
+    }
+}
+
+AddEngineModelToAircraftModelUI --> AddEngineModelToAircraftModelController : uses >
+AddEngineModelToAircraftModelController --> AddEngineModelToAircraftModelService : uses >
+AddEngineModelToAircraftModelService --> AuthorizationService : checks permission >
+AddEngineModelToAircraftModelService --> AircraftModelRepository : retrieves/saves >
+AddEngineModelToAircraftModelService --> AircraftEngineModelRepository : retrieves >
+AddEngineModelToAircraftModelService --> EngineCompatibilityPolicy : checks compatibility >
+AddEngineModelToAircraftModelService --> AircraftModelDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AircraftModel "1" o-- "1..*" AircraftEngineModel
+AircraftModel *-- AircraftModelName
+AircraftModel *-- AircraftType
+AircraftEngineModel *-- EngineModelName
+AircraftEngineModel *-- EngineType
+
+@enduml

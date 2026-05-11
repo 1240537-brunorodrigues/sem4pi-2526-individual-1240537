@@ -1,0 +1,45 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class AircraftModel {
+    modelName
+    aircraftType
+}
+
+class AircraftEngineModel {
+    modelName
+    engineType
+}
+
+class CertifiedEngineModel {
+    certificationStatus
+}
+
+class EngineType {
+    name
+}
+
+class AircraftVariant {
+    variantName
+}
+
+BackofficeOperator "1" -- "*" AircraftModel : manages >
+AircraftModel "1" -- "1..*" CertifiedEngineModel : has >
+CertifiedEngineModel "*" -- "1" AircraftEngineModel : references >
+AircraftEngineModel "*" -- "1" EngineType : has >
+AircraftModel "1" -- "*" AircraftVariant : may define >
+AircraftVariant "*" -- "1" AircraftEngineModel : uses >
+
+@enduml

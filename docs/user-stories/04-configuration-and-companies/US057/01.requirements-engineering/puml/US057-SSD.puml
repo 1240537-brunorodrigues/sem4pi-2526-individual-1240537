@@ -1,0 +1,38 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to add an engine model to an aircraft model
+
+activate System
+System --> BackofficeOperator : Requests aircraft model and engine model
+deactivate System
+
+BackofficeOperator -> System : Provides aircraft model and engine model
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate aircraft model
+System --> System : Validate aircraft engine model
+System --> System : Check engine type compatibility
+System --> System : Check if engine model is already certified
+
+alt engine model can be added
+    System --> System : Add engine model to certified engine list
+    System --> BackofficeOperator : Engine model added successfully
+else engine model cannot be added
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml
