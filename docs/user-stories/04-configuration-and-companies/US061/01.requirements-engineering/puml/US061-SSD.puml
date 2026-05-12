@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to register a customer's collaborator
+
+activate System
+System --> BackofficeOperator : Requests customer and collaborator data
+deactivate System
+
+BackofficeOperator -> System : Provides customer and collaborator data
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate customer
+System --> System : Validate collaborator required data
+System --> System : Validate email
+System --> System : Check if email already exists as a system user
+System --> System : Register collaborator as system user
+System --> System : Associate collaborator with customer
+
+alt collaborator data is valid
+    System --> BackofficeOperator : Customer collaborator registered successfully
+else collaborator data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

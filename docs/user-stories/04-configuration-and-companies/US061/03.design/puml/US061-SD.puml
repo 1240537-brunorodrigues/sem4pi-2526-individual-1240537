@@ -1,0 +1,125 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "AddCustomerCollaboratorUI" as UI
+participant "AddCustomerCollaboratorController" as CTRL
+participant "AddCustomerCollaboratorService" as Service
+participant "AuthorizationService" as AuthzService
+participant "CustomerRepository" as CustomerRepo
+participant "Email" as Email
+participant "UserRepository" as UserRepo
+participant "User:\n collaboratorUser" as User
+participant "CustomerCollaborator:\n collaborator" as Collaborator
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to add a customer's collaborator
+
+activate UI
+UI --> BackofficeOperator : Requests customer and collaborator data
+deactivate UI
+
+BackofficeOperator -> UI : Provides customer and collaborator data
+
+activate UI
+UI -> CTRL : addCustomerCollaborator(request)
+
+activate CTRL
+CTRL -> Service : addCustomerCollaborator(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, ADD_CUSTOMER_COLLABORATOR)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> CustomerRepo : findById(request.customerId)
+
+    activate CustomerRepo
+    CustomerRepo --> Service : Optional<Customer>
+    deactivate CustomerRepo
+
+    alt customer exists
+
+        Service -> Email ** : Email(request.email)
+
+        activate Email
+        Email --> Service : email
+        deactivate Email
+
+        Service -> UserRepo : existsByEmail(email)
+
+        activate UserRepo
+        UserRepo --> Service : true/false
+        deactivate UserRepo
+
+        alt email is not already used
+
+            Service -> User ** : User(email, name, phoneNumber, role)
+
+            activate User
+            User --> Service : collaboratorUser
+            deactivate User
+
+            Service -> UserRepo : save(collaboratorUser)
+
+            activate UserRepo
+            UserRepo --> Service : saved
+            deactivate UserRepo
+
+            Service -> Collaborator ** : CustomerCollaborator(customer, collaboratorUser, position)
+
+            activate Collaborator
+            Collaborator --> Service : collaborator
+            deactivate Collaborator
+
+            Service -> CollaboratorRepo : save(collaborator)
+
+            activate CollaboratorRepo
+            CollaboratorRepo --> Service : saved
+            deactivate CollaboratorRepo
+
+            Service --> CTRL : CustomerCollaboratorDTO
+            CTRL --> UI : Registration successful
+            UI --> BackofficeOperator : Display success message
+
+        else email already exists
+
+            Service --> CTRL : Registration failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display duplicated email error
+
+        end
+
+    else customer does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display customer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml
