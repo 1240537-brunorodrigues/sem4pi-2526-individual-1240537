@@ -1,0 +1,41 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to edit a customer's collaborator
+
+activate System
+System --> BackofficeOperator : Requests customer, collaborator and new contact data
+deactivate System
+
+BackofficeOperator -> System : Provides customer, collaborator, new email and new phone number
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate customer
+System --> System : Validate collaborator
+System --> System : Check if collaborator belongs to customer
+System --> System : Validate new email
+System --> System : Check email uniqueness
+System --> System : Validate new phone number
+System --> System : Ensure only email and phone number are changed
+
+alt update data is valid
+    System --> System : Update collaborator contact information
+    System --> BackofficeOperator : Collaborator updated successfully
+else update data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

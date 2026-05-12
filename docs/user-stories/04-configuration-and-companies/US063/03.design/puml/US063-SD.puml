@@ -1,0 +1,148 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "EditCustomerCollaboratorUI" as UI
+participant "EditCustomerCollaboratorController" as CTRL
+participant "EditCustomerCollaboratorService" as Service
+participant "AuthorizationService" as AuthzService
+participant "CustomerRepository" as CustomerRepo
+participant "Email" as NewEmail
+participant "PhoneNumber" as NewPhoneNumber
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "UserRepository" as UserRepo
+participant "CustomerCollaborator:\n collaborator" as Collaborator
+participant "User:\n collaboratorUser" as User
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to edit a customer's collaborator
+
+activate UI
+UI --> BackofficeOperator : Requests customer, collaborator and new contact data
+deactivate UI
+
+BackofficeOperator -> UI : Provides new email and phone number
+
+activate UI
+UI -> CTRL : editCustomerCollaborator(request)
+
+activate CTRL
+CTRL -> Service : editCustomerCollaborator(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, EDIT_CUSTOMER_COLLABORATOR)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> CustomerRepo : findById(request.customerId)
+
+    activate CustomerRepo
+    CustomerRepo --> Service : Optional<Customer>
+    deactivate CustomerRepo
+
+    alt customer exists
+
+        Service -> NewEmail ** : Email(request.newEmail)
+
+        activate NewEmail
+        NewEmail --> Service : newEmail
+        deactivate NewEmail
+
+        Service -> NewPhoneNumber ** : PhoneNumber(request.newPhoneNumber)
+
+        activate NewPhoneNumber
+        NewPhoneNumber --> Service : newPhoneNumber
+        deactivate NewPhoneNumber
+
+        Service -> CollaboratorRepo : findByCustomerAndEmail(customer, request.collaboratorEmail)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator exists and belongs to customer
+
+            Service -> UserRepo : existsByEmail(newEmail)
+
+            activate UserRepo
+            UserRepo --> Service : true/false
+            deactivate UserRepo
+
+            alt new email is unique or belongs to same collaborator
+
+                Service -> Collaborator : updateContactInfo(newEmail, newPhoneNumber)
+
+                activate Collaborator
+                Collaborator -> User : updateContactInfo(newEmail, newPhoneNumber)
+
+                activate User
+                User --> Collaborator : contact info updated
+                deactivate User
+
+                Collaborator --> Service : collaborator updated
+                deactivate Collaborator
+
+                Service -> CollaboratorRepo : save(collaborator)
+
+                activate CollaboratorRepo
+                CollaboratorRepo --> Service : saved
+                deactivate CollaboratorRepo
+
+                Service -> UserRepo : save(collaboratorUser)
+
+                activate UserRepo
+                UserRepo --> Service : saved
+                deactivate UserRepo
+
+                Service --> CTRL : CustomerCollaboratorDTO
+                CTRL --> UI : Update successful
+                UI --> BackofficeOperator : Display success message
+
+            else new email already belongs to another user
+
+                Service --> CTRL : Update failed
+                CTRL --> UI : Error
+                UI --> BackofficeOperator : Display duplicated email error
+
+            end
+
+        else collaborator does not exist for customer
+
+            Service --> CTRL : Update failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display collaborator not found message
+
+        end
+
+    else customer does not exist
+
+        Service --> CTRL : Update failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display customer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml
