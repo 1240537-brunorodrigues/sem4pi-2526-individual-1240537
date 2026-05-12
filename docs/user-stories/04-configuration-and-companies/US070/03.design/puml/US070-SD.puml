@@ -1,0 +1,198 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "AddAircraftToCompanyFleetUI" as UI
+participant "AddAircraftToCompanyFleetController" as CTRL
+participant "AddAircraftToCompanyFleetService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "AircraftModelRepository" as AircraftModelRepo
+participant "AircraftEngineModelRepository" as EngineRepo
+participant "AircraftConfigurationPolicy" as ConfigPolicy
+participant "AircraftRepository" as AircraftRepo
+participant "AircraftRegistrationNumber" as RegistrationNumber
+participant "CabinConfiguration" as CabinConfig
+participant "Aircraft:\n aircraft" as Aircraft
+
+activate ATCC
+
+ATCC -> UI : Requests to add an aircraft to company fleet
+
+activate UI
+UI --> ATCC : Requests aircraft data, model, engine and cabin configuration
+deactivate UI
+
+ATCC -> UI : Provides aircraft data
+
+activate UI
+UI -> CTRL : addAircraftToCompanyFleet(request)
+
+activate CTRL
+CTRL -> Service : addAircraftToCompanyFleet(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, ADD_AIRCRAFT_TO_FLEET)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> AircraftModelRepo : findById(request.aircraftModelId)
+
+            activate AircraftModelRepo
+            AircraftModelRepo --> Service : Optional<AircraftModel>
+            deactivate AircraftModelRepo
+
+            Service -> EngineRepo : findById(request.engineModelId)
+
+            activate EngineRepo
+            EngineRepo --> Service : Optional<AircraftEngineModel>
+            deactivate EngineRepo
+
+            alt aircraft model and engine model exist
+
+                Service -> ConfigPolicy : isValidConfiguration(aircraftModel, engineModel)
+
+                activate ConfigPolicy
+                ConfigPolicy --> Service : true/false
+                deactivate ConfigPolicy
+
+                alt configuration is valid
+
+                    Service -> RegistrationNumber ** : AircraftRegistrationNumber(request.registrationNumber)
+
+                    activate RegistrationNumber
+                    RegistrationNumber --> Service : registrationNumber
+                    deactivate RegistrationNumber
+
+                    Service -> AircraftRepo : existsByRegistrationNumber(registrationNumber)
+
+                    activate AircraftRepo
+                    AircraftRepo --> Service : true/false
+                    deactivate AircraftRepo
+
+                    alt registration number is unique
+
+                        Service -> CabinConfig ** : CabinConfiguration(request.seatsByClass)
+
+                        activate CabinConfig
+                        CabinConfig --> Service : cabinConfiguration
+                        deactivate CabinConfig
+
+                        Service -> CabinConfig : validateAgainstCapacity(aircraftModel.maximumCapacity)
+
+                        activate CabinConfig
+                        CabinConfig --> Service : true/false
+                        deactivate CabinConfig
+
+                        alt cabin configuration is valid
+
+                            Service -> Aircraft ** : Aircraft(registrationNumber, company,\nconfiguration, cabinConfiguration, country, status)
+
+                            activate Aircraft
+                            Aircraft --> Service : aircraft
+                            deactivate Aircraft
+
+                            Service -> AircraftRepo : save(aircraft)
+
+                            activate AircraftRepo
+                            AircraftRepo --> Service : saved
+                            deactivate AircraftRepo
+
+                            Service -> CompanyRepo : save(company)
+
+                            activate CompanyRepo
+                            CompanyRepo --> Service : saved
+                            deactivate CompanyRepo
+
+                            Service --> CTRL : AircraftDTO
+                            CTRL --> UI : Aircraft added successfully
+                            UI --> ATCC : Display success message
+
+                        else cabin configuration exceeds model capacity
+
+                            Service --> CTRL : Operation failed
+                            CTRL --> UI : Error
+                            UI --> ATCC : Display cabin configuration error
+
+                        end
+
+                    else registration number already exists
+
+                        Service --> CTRL : Operation failed
+                        CTRL --> UI : Error
+                        UI --> ATCC : Display duplicated registration error
+
+                    end
+
+                else configuration is invalid
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display invalid configuration error
+
+                end
+
+            else aircraft model or engine model does not exist
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display model or engine not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml
