@@ -1,0 +1,64 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class Customer {
+    id
+    name
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class AirControlArea {
+    code
+    name
+}
+
+class CustomerCollaborator {
+    email
+    name
+    phoneNumber
+    position
+    status
+}
+
+class CollaboratorStatus {
+    active
+    disabled
+}
+
+class SystemUser {
+    email
+    enabled
+}
+
+class UserStatus {
+    enabled
+    disabled
+}
+
+Customer <|-- AirTransportCompany
+Customer <|-- AirControlArea
+
+BackofficeOperator "1" -- "*" CustomerCollaborator : disables >
+Customer "1" -- "*" CustomerCollaborator : has >
+CustomerCollaborator "1" -- "1" CollaboratorStatus : has >
+CustomerCollaborator "1" -- "1" SystemUser : is >
+SystemUser "1" -- "1" UserStatus : has >
+
+@enduml

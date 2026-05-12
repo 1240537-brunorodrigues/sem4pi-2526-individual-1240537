@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to disable a customer's collaborator
+
+activate System
+System --> BackofficeOperator : Requests customer and collaborator identification
+deactivate System
+
+BackofficeOperator -> System : Provides customer and collaborator identification
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate customer
+System --> System : Validate collaborator
+System --> System : Check if collaborator belongs to customer
+System --> System : Check if collaborator is active
+
+alt collaborator can be disabled
+    System --> System : Disable collaborator
+    System --> System : Disable corresponding system user access
+    System --> BackofficeOperator : Collaborator disabled successfully
+else collaborator cannot be disabled
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

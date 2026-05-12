@@ -1,0 +1,141 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "DisableCustomerCollaboratorUI" as UI
+participant "DisableCustomerCollaboratorController" as CTRL
+participant "DisableCustomerCollaboratorService" as Service
+participant "AuthorizationService" as AuthzService
+participant "CustomerRepository" as CustomerRepo
+participant "Email" as Email
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "CustomerCollaborator:\n collaborator" as Collaborator
+participant "User:\n collaboratorUser" as User
+participant "UserRepository" as UserRepo
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to disable a customer's collaborator
+
+activate UI
+UI --> BackofficeOperator : Requests customer and collaborator identification
+deactivate UI
+
+BackofficeOperator -> UI : Provides customer and collaborator identification
+
+activate UI
+UI -> CTRL : disableCustomerCollaborator(request)
+
+activate CTRL
+CTRL -> Service : disableCustomerCollaborator(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, DISABLE_CUSTOMER_COLLABORATOR)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> CustomerRepo : findById(request.customerId)
+
+    activate CustomerRepo
+    CustomerRepo --> Service : Optional<Customer>
+    deactivate CustomerRepo
+
+    alt customer exists
+
+        Service -> Email ** : Email(request.collaboratorEmail)
+
+        activate Email
+        Email --> Service : email
+        deactivate Email
+
+        Service -> CollaboratorRepo : findByCustomerAndEmail(customer, email)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator exists and belongs to customer
+
+            Service -> Collaborator : isActive()
+
+            activate Collaborator
+            Collaborator --> Service : true/false
+            deactivate Collaborator
+
+            alt collaborator is active
+
+                Service -> Collaborator : disable()
+
+                activate Collaborator
+                Collaborator -> User : disable()
+
+                activate User
+                User --> Collaborator : user disabled
+                deactivate User
+
+                Collaborator --> Service : collaborator disabled
+                deactivate Collaborator
+
+                Service -> CollaboratorRepo : save(collaborator)
+
+                activate CollaboratorRepo
+                CollaboratorRepo --> Service : saved
+                deactivate CollaboratorRepo
+
+                Service -> UserRepo : save(collaboratorUser)
+
+                activate UserRepo
+                UserRepo --> Service : saved
+                deactivate UserRepo
+
+                Service --> CTRL : CustomerCollaboratorDTO
+                CTRL --> UI : Disable successful
+                UI --> BackofficeOperator : Display success message
+
+            else collaborator is already disabled
+
+                Service --> CTRL : Disable failed
+                CTRL --> UI : Error
+                UI --> BackofficeOperator : Display collaborator already disabled message
+
+            end
+
+        else collaborator does not exist for customer
+
+            Service --> CTRL : Disable failed
+            CTRL --> UI : Error
+            UI --> BackofficeOperator : Display collaborator not found message
+
+        end
+
+    else customer does not exist
+
+        Service --> CTRL : Disable failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display customer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

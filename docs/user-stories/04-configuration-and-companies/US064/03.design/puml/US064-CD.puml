@@ -1,0 +1,153 @@
+@startuml
+title US064-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class DisableCustomerCollaboratorUI {
+        - customerId: String
+        - collaboratorEmail: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class DisableCustomerCollaboratorController {
+        + disableCustomerCollaborator(request: DisableCustomerCollaboratorRequest): CustomerCollaboratorDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class DisableCustomerCollaboratorService {
+        + disableCustomerCollaborator(request: DisableCustomerCollaboratorRequest): CustomerCollaboratorDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class DisableCustomerCollaboratorRequest {
+        - customerId: String
+        - collaboratorEmail: String
+    }
+
+    class CustomerCollaboratorDTO {
+        - customerId: String
+        - email: String
+        - name: String
+        - position: String
+        - active: boolean
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - roles: List<Role>
+        - enabled: boolean
+        + disable(): void
+        + isEnabled(): boolean
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - iataCode: AirlineIATACode
+        - icaoCode: AirlineICAOCode
+    }
+
+    class AirControlArea {
+        - code: AreaCode
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - position: String
+        - active: boolean
+        + disable(): void
+        + isActive(): boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Email {
+        - value: String
+        + Email(value: String)
+    }
+
+    class PhoneNumber {
+        - value: String
+    }
+
+    class AirlineIATACode {
+        - value: String
+    }
+
+    class AirlineICAOCode {
+        - value: String
+    }
+
+    class AreaCode {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface CustomerRepository {
+        + findById(customerId: String): Optional<Customer>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByCustomerAndEmail(customer: Customer, email: Email): Optional<CustomerCollaborator>
+        + save(collaborator: CustomerCollaborator): void
+    }
+
+    interface UserRepository {
+        + save(user: User): void
+    }
+}
+
+DisableCustomerCollaboratorUI --> DisableCustomerCollaboratorController : uses >
+DisableCustomerCollaboratorController --> DisableCustomerCollaboratorService : uses >
+DisableCustomerCollaboratorService --> AuthorizationService : checks permission >
+DisableCustomerCollaboratorService --> CustomerRepository : retrieves customer >
+DisableCustomerCollaboratorService --> CustomerCollaboratorRepository : retrieves/saves collaborator >
+DisableCustomerCollaboratorService --> UserRepository : saves user >
+DisableCustomerCollaboratorService --> CustomerCollaboratorDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+User *-- PhoneNumber
+
+Customer <|-- AirTransportCompany
+Customer <|-- AirControlArea
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+AirTransportCompany *-- AirlineIATACode
+AirTransportCompany *-- AirlineICAOCode
+AirControlArea *-- AreaCode
+
+@enduml
