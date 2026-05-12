@@ -1,0 +1,37 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to list customer's collaborators
+
+activate System
+System --> BackofficeOperator : Requests customer identification
+deactivate System
+
+BackofficeOperator -> System : Provides customer identification
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate customer
+System --> System : Retrieve customer's active collaborators
+
+alt active collaborators exist
+    System --> BackofficeOperator : Display active collaborators list
+else no active collaborators exist
+    System --> BackofficeOperator : Display empty list message
+else customer is invalid or user is unauthorized
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

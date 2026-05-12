@@ -1,0 +1,96 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "ListCustomerCollaboratorsUI" as UI
+participant "ListCustomerCollaboratorsController" as CTRL
+participant "ListCustomerCollaboratorsService" as Service
+participant "AuthorizationService" as AuthzService
+participant "CustomerRepository" as CustomerRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "CustomerCollaboratorDTO" as CollaboratorDTO
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to list customer's collaborators
+
+activate UI
+UI --> BackofficeOperator : Requests customer identification
+deactivate UI
+
+BackofficeOperator -> UI : Provides customer identification
+
+activate UI
+UI -> CTRL : listCustomerCollaborators(request)
+
+activate CTRL
+CTRL -> Service : listCustomerCollaborators(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, LIST_CUSTOMER_COLLABORATORS)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> CustomerRepo : findById(request.customerId)
+
+    activate CustomerRepo
+    CustomerRepo --> Service : Optional<Customer>
+    deactivate CustomerRepo
+
+    alt customer exists
+
+        Service -> CollaboratorRepo : findActiveByCustomer(customer)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : List<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt active collaborators exist
+
+            loop for each active collaborator
+                Service -> CollaboratorDTO ** : CustomerCollaboratorDTO(collaborator)
+            end
+
+            Service --> CTRL : List<CustomerCollaboratorDTO>
+            CTRL --> UI : List<CustomerCollaboratorDTO>
+            UI --> BackofficeOperator : Display active collaborators
+
+        else no active collaborators exist
+
+            Service --> CTRL : Empty list
+            CTRL --> UI : Empty list
+            UI --> BackofficeOperator : Display empty list message
+
+        end
+
+    else customer does not exist
+
+        Service --> CTRL : Listing failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display customer not found message
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml
