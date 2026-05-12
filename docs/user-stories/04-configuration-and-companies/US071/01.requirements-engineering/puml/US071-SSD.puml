@@ -1,0 +1,40 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> System : Requests to decommission an aircraft
+
+activate System
+System --> ATCC : Requests company and aircraft identification
+deactivate System
+
+ATCC -> System : Provides company and aircraft identification
+
+activate System
+System --> System : Check if collaborator is authorized
+System --> System : Validate air transport company
+System --> System : Check if collaborator belongs to company
+System --> System : Validate aircraft
+System --> System : Check if aircraft belongs to company fleet
+System --> System : Check pending flights
+System --> System : Validate current operational status
+
+alt aircraft can be decommissioned
+    System --> System : Update aircraft operational status
+    System --> ATCC : Aircraft decommissioned successfully
+else aircraft cannot be decommissioned
+    System --> ATCC : Display error message
+end
+
+deactivate System
+deactivate ATCC
+
+@enduml

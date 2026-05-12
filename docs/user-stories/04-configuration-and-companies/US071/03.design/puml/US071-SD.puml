@@ -1,0 +1,152 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "DecommissionAircraftUI" as UI
+participant "DecommissionAircraftController" as CTRL
+participant "DecommissionAircraftService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "AircraftRegistrationNumber" as RegistrationNumber
+participant "AircraftRepository" as AircraftRepo
+participant "FlightRepository" as FlightRepo
+participant "AircraftDecommissionPolicy" as DecommissionPolicy
+participant "Aircraft:\n aircraft" as Aircraft
+
+activate ATCC
+
+ATCC -> UI : Requests to decommission an aircraft
+
+activate UI
+UI --> ATCC : Requests company and aircraft registration number
+deactivate UI
+
+ATCC -> UI : Provides company and aircraft registration number
+
+activate UI
+UI -> CTRL : decommissionAircraft(request)
+
+activate CTRL
+CTRL -> Service : decommissionAircraft(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, DECOMMISSION_AIRCRAFT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> RegistrationNumber ** : AircraftRegistrationNumber(request.aircraftRegistrationNumber)
+
+            activate RegistrationNumber
+            RegistrationNumber --> Service : registrationNumber
+            deactivate RegistrationNumber
+
+            Service -> AircraftRepo : findByRegistrationNumber(registrationNumber)
+
+            activate AircraftRepo
+            AircraftRepo --> Service : Optional<Aircraft>
+            deactivate AircraftRepo
+
+            alt aircraft exists and belongs to company
+
+                Service -> FlightRepo : existsPendingFlightsForAircraft(aircraft)
+
+                activate FlightRepo
+                FlightRepo --> Service : true/false
+                deactivate FlightRepo
+
+                Service -> DecommissionPolicy : canDecommission(aircraft, hasPendingFlights)
+
+                activate DecommissionPolicy
+                DecommissionPolicy --> Service : true/false
+                deactivate DecommissionPolicy
+
+                alt aircraft can be decommissioned
+
+                    Service -> Aircraft : decommission()
+
+                    activate Aircraft
+                    Aircraft --> Service : status updated
+                    deactivate Aircraft
+
+                    Service -> AircraftRepo : save(aircraft)
+
+                    activate AircraftRepo
+                    AircraftRepo --> Service : saved
+                    deactivate AircraftRepo
+
+                    Service --> CTRL : AircraftDTO
+                    CTRL --> UI : Decommission successful
+                    UI --> ATCC : Display success message
+
+                else aircraft cannot be decommissioned
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display pending flights or status error
+
+                end
+
+            else aircraft does not exist or does not belong to company
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display aircraft not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

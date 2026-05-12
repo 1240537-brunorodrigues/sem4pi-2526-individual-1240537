@@ -1,0 +1,167 @@
+@startuml
+title US071-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class DecommissionAircraftUI {
+        - companyId: String
+        - aircraftRegistrationNumber: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class DecommissionAircraftController {
+        + decommissionAircraft(request: DecommissionAircraftRequest): AircraftDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class DecommissionAircraftService {
+        + decommissionAircraft(request: DecommissionAircraftRequest): AircraftDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class DecommissionAircraftRequest {
+        - companyId: String
+        - aircraftRegistrationNumber: String
+    }
+
+    class AircraftDTO {
+        - registrationNumber: String
+        - companyId: String
+        - operationalStatus: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - fleet: Fleet
+    }
+
+    class Fleet {
+        - aircraft: List<Aircraft>
+        + contains(aircraft: Aircraft): boolean
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Aircraft {
+        - registrationNumber: AircraftRegistrationNumber
+        - company: AirTransportCompany
+        - operationalStatus: OperationalStatus
+        + decommission(): void
+        + isDecommissioned(): boolean
+    }
+
+    class AircraftRegistrationNumber {
+        - value: String
+        + AircraftRegistrationNumber(value: String)
+    }
+
+    class OperationalStatus {
+        - value: String
+    }
+
+    class AircraftDecommissionPolicy {
+        + canDecommission(aircraft: Aircraft, hasPendingFlights: boolean): boolean
+    }
+
+    class Flight {
+        - flightNumber: String
+        - status: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface AircraftRepository {
+        + findByRegistrationNumber(registrationNumber: AircraftRegistrationNumber): Optional<Aircraft>
+        + save(aircraft: Aircraft): void
+    }
+
+    interface FlightRepository {
+        + existsPendingFlightsForAircraft(aircraft: Aircraft): boolean
+    }
+}
+
+DecommissionAircraftUI --> DecommissionAircraftController : uses >
+DecommissionAircraftController --> DecommissionAircraftService : uses >
+DecommissionAircraftService --> AuthorizationService : checks permission >
+DecommissionAircraftService --> AirTransportCompanyRepository : retrieves company >
+DecommissionAircraftService --> CustomerCollaboratorRepository : verifies collaborator company >
+DecommissionAircraftService --> AircraftRepository : retrieves/saves aircraft >
+DecommissionAircraftService --> FlightRepository : checks pending flights >
+DecommissionAircraftService --> AircraftDecommissionPolicy : checks decommissioning >
+DecommissionAircraftService --> AircraftDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany *-- Fleet
+Fleet "1" o-- "*" Aircraft
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Aircraft "*" --> "1" AirTransportCompany
+Aircraft *-- AircraftRegistrationNumber
+Aircraft *-- OperationalStatus
+Flight "*" --> "1" Aircraft
+
+@enduml
