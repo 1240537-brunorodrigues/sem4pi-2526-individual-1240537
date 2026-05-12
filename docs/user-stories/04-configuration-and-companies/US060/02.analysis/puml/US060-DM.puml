@@ -1,0 +1,60 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class BackofficeOperator {
+    email
+}
+
+class AirTransportCompany {
+    name
+}
+
+class AirlineIATACode {
+    value
+}
+
+class AirlineICAOCode {
+    value
+}
+
+class CompanyCollaborator {
+    email
+    name
+    position
+}
+
+class Aircraft {
+    registration
+}
+
+class Pilot {
+    email
+    name
+}
+
+class FlightRoute {
+    name
+}
+
+class BootstrapProcess {
+    source
+}
+
+BackofficeOperator "1" -- "*" AirTransportCompany : registers >
+BootstrapProcess "1" -- "*" AirTransportCompany : initializes >
+AirTransportCompany "1" -- "1" AirlineIATACode : identified by >
+AirTransportCompany "1" -- "1" AirlineICAOCode : identified by >
+AirTransportCompany "1" -- "*" CompanyCollaborator : may have >
+AirTransportCompany "1" -- "*" Aircraft : owns >
+AirTransportCompany "1" -- "*" Pilot : employs >
+AirTransportCompany "1" -- "*" FlightRoute : defines >
+
+@enduml

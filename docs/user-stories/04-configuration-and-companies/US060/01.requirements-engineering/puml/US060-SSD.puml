@@ -1,0 +1,39 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant ":System" as System
+
+activate BackofficeOperator
+
+BackofficeOperator -> System : Requests to register an air transport company
+
+activate System
+System --> BackofficeOperator : Requests company name, IATA code and ICAO code
+deactivate System
+
+BackofficeOperator -> System : Provides company data
+
+activate System
+System --> System : Check if Backoffice Operator is authorized
+System --> System : Validate required data
+System --> System : Validate IATA code
+System --> System : Validate ICAO code
+System --> System : Check IATA code uniqueness
+System --> System : Check ICAO code uniqueness
+
+alt company data is valid
+    System --> System : Register air transport company
+    System --> BackofficeOperator : Air transport company registered successfully
+else company data is invalid
+    System --> BackofficeOperator : Display error message
+end
+
+deactivate System
+deactivate BackofficeOperator
+
+@enduml

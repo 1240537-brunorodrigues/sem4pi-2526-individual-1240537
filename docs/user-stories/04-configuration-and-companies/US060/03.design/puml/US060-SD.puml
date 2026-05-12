@@ -1,0 +1,114 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Backoffice Operator" as BackofficeOperator
+participant "RegisterAirTransportCompanyUI" as UI
+participant "RegisterAirTransportCompanyController" as CTRL
+participant "RegisterAirTransportCompanyService" as Service
+participant "AuthorizationService" as AuthzService
+participant "CompanyName" as CompanyName
+participant "AirlineIATACode" as IATACode
+participant "AirlineICAOCode" as ICAOCode
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "AirTransportCompany:\n company" as Company
+
+activate BackofficeOperator
+
+BackofficeOperator -> UI : Requests to register an air transport company
+
+activate UI
+UI --> BackofficeOperator : Requests company name, IATA code and ICAO code
+deactivate UI
+
+BackofficeOperator -> UI : Provides company data
+
+activate UI
+UI -> CTRL : registerAirTransportCompany(request)
+
+activate CTRL
+CTRL -> Service : registerAirTransportCompany(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REGISTER_AIR_TRANSPORT_COMPANY)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt Backoffice Operator is authorized
+
+    Service -> CompanyName ** : CompanyName(request.companyName)
+
+    activate CompanyName
+    CompanyName --> Service : companyName
+    deactivate CompanyName
+
+    Service -> IATACode ** : AirlineIATACode(request.iataCode)
+
+    activate IATACode
+    IATACode --> Service : iataCode
+    deactivate IATACode
+
+    Service -> ICAOCode ** : AirlineICAOCode(request.icaoCode)
+
+    activate ICAOCode
+    ICAOCode --> Service : icaoCode
+    deactivate ICAOCode
+
+    Service -> CompanyRepo : existsByIATACode(iataCode)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : true/false
+    deactivate CompanyRepo
+
+    Service -> CompanyRepo : existsByICAOCode(icaoCode)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : true/false
+    deactivate CompanyRepo
+
+    alt IATA and ICAO codes are unique
+
+        Service -> Company ** : AirTransportCompany(companyName, iataCode, icaoCode)
+
+        activate Company
+        Company --> Service : company
+        deactivate Company
+
+        Service -> CompanyRepo : save(company)
+
+        activate CompanyRepo
+        CompanyRepo --> Service : saved
+        deactivate CompanyRepo
+
+        Service --> CTRL : AirTransportCompanyDTO
+        CTRL --> UI : Registration successful
+        UI --> BackofficeOperator : Display success message
+
+    else IATA or ICAO code already exists
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> BackofficeOperator : Display duplicated code error
+
+    end
+
+else Backoffice Operator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> BackofficeOperator : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate BackofficeOperator
+
+@enduml

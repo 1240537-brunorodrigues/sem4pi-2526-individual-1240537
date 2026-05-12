@@ -1,0 +1,122 @@
+@startuml
+title US060-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package ".console" #DDDDDD {
+    class RegisterAirTransportCompanyUI {
+        - companyName: String
+        - iataCode: String
+        - icaoCode: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RegisterAirTransportCompanyController {
+        + registerAirTransportCompany(request: RegisterAirTransportCompanyRequest): AirTransportCompanyDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RegisterAirTransportCompanyService {
+        + registerAirTransportCompany(request: RegisterAirTransportCompanyRequest): AirTransportCompanyDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RegisterAirTransportCompanyRequest {
+        - companyName: String
+        - iataCode: String
+        - icaoCode: String
+    }
+
+    class AirTransportCompanyDTO {
+        - companyName: String
+        - iataCode: String
+        - icaoCode: String
+    }
+
+    class BootstrapAirTransportCompanyLoader {
+        + loadDefaultAirTransportCompanies(): void
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - companyName: CompanyName
+        - iataCode: AirlineIATACode
+        - icaoCode: AirlineICAOCode
+        + AirTransportCompany(companyName: CompanyName, iataCode: AirlineIATACode, icaoCode: AirlineICAOCode)
+    }
+
+    class CompanyName {
+        - value: String
+        + CompanyName(value: String)
+    }
+
+    class AirlineIATACode {
+        - value: String
+        + AirlineIATACode(value: String)
+    }
+
+    class AirlineICAOCode {
+        - value: String
+        + AirlineICAOCode(value: String)
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + existsByIATACode(code: AirlineIATACode): boolean
+        + existsByICAOCode(code: AirlineICAOCode): boolean
+        + save(company: AirTransportCompany): void
+        + findByIATACode(code: AirlineIATACode): Optional<AirTransportCompany>
+        + findByICAOCode(code: AirlineICAOCode): Optional<AirTransportCompany>
+    }
+}
+
+RegisterAirTransportCompanyUI --> RegisterAirTransportCompanyController : uses >
+RegisterAirTransportCompanyController --> RegisterAirTransportCompanyService : uses >
+RegisterAirTransportCompanyService --> AuthorizationService : checks permission >
+RegisterAirTransportCompanyService --> AirTransportCompanyRepository : checks/saves >
+RegisterAirTransportCompanyService --> AirTransportCompany : creates >
+RegisterAirTransportCompanyService --> AirTransportCompanyDTO : returns >
+BootstrapAirTransportCompanyLoader --> RegisterAirTransportCompanyService : uses >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany *-- CompanyName
+AirTransportCompany *-- AirlineIATACode
+AirTransportCompany *-- AirlineICAOCode
+
+@enduml
