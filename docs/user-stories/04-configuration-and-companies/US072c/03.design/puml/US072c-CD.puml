@@ -1,0 +1,208 @@
+@startuml
+title US072c-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ListFleetByCapacityUI {
+        - companyId: String
+        - minimumCapacity: Integer
+        - maximumCapacity: Integer
+        - sortingOrder: String
+        + requestData()
+        + displayFleet(aircraft: List<AircraftDTO>)
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ListFleetByCapacityController {
+        + listFleetByCapacity(request: ListFleetByCapacityRequest): List<AircraftDTO>
+    }
+}
+
+package "application" #DDDDDD {
+    class ListFleetByCapacityService {
+        + listFleetByCapacity(request: ListFleetByCapacityRequest): List<AircraftDTO>
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class ListFleetByCapacityRequest {
+        - companyId: String
+        - minimumCapacity: Integer
+        - maximumCapacity: Integer
+        - sortingOrder: String
+    }
+
+    class AircraftDTO {
+        - registrationNumber: String
+        - aircraftModel: String
+        - engineModel: String
+        - totalSeats: int
+        - registeredCountry: String
+        - operationalStatus: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - fleet: Fleet
+    }
+
+    class Fleet {
+        - aircraft: List<Aircraft>
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Aircraft {
+        - registrationNumber: AircraftRegistrationNumber
+        - configuration: AircraftConfiguration
+        - cabinConfiguration: CabinConfiguration
+        - registeredCountry: Country
+        - operationalStatus: OperationalStatus
+    }
+
+    class AircraftRegistrationNumber {
+        - value: String
+    }
+
+    class AircraftConfiguration {
+        - aircraftModel: AircraftModel
+        - engineModel: AircraftEngineModel
+    }
+
+    class AircraftModel {
+        - modelName: AircraftModelName
+    }
+
+    class AircraftEngineModel {
+        - modelName: EngineModelName
+    }
+
+    class CabinConfiguration {
+        - seatsByClass: Map<String, Integer>
+        + totalSeats(): int
+    }
+
+    class CapacityCriteria {
+        - minimumCapacity: Integer
+        - maximumCapacity: Integer
+        - sortingOrder: SortingOrder
+        + matches(aircraft: Aircraft): boolean
+    }
+
+    class SortingOrder {
+        - value: String
+    }
+
+    class Country {
+        - name: String
+        - code: String
+    }
+
+    class OperationalStatus {
+        - value: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class EngineModelName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface AircraftRepository {
+        + findByCompany(company: AirTransportCompany): List<Aircraft>
+    }
+}
+
+ListFleetByCapacityUI --> ListFleetByCapacityController : uses >
+ListFleetByCapacityController --> ListFleetByCapacityService : uses >
+ListFleetByCapacityService --> AuthorizationService : checks permission >
+ListFleetByCapacityService --> AirTransportCompanyRepository : retrieves company >
+ListFleetByCapacityService --> CustomerCollaboratorRepository : verifies collaborator company >
+ListFleetByCapacityService --> AircraftRepository : retrieves fleet >
+ListFleetByCapacityService --> CapacityCriteria : creates/uses >
+ListFleetByCapacityService --> AircraftDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany *-- Fleet
+Fleet "1" o-- "*" Aircraft
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Aircraft *-- AircraftRegistrationNumber
+Aircraft *-- AircraftConfiguration
+Aircraft *-- CabinConfiguration
+Aircraft *-- Country
+Aircraft *-- OperationalStatus
+
+AircraftConfiguration "*" --> "1" AircraftModel
+AircraftConfiguration "*" --> "1" AircraftEngineModel
+AircraftModel *-- AircraftModelName
+AircraftEngineModel *-- EngineModelName
+
+CapacityCriteria *-- SortingOrder
+
+@enduml

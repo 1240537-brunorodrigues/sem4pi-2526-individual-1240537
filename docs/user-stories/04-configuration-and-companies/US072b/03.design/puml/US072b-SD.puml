@@ -1,0 +1,130 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "ListFleetByMakerUI" as UI
+participant "ListFleetByMakerController" as CTRL
+participant "ListFleetByMakerService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "ManufacturerRepository" as MakerRepo
+participant "AircraftRepository" as AircraftRepo
+participant "AircraftDTO" as AircraftDTO
+
+activate ATCC
+
+ATCC -> UI : Requests to list company fleet by maker
+
+activate UI
+UI --> ATCC : Requests company and maker
+deactivate UI
+
+ATCC -> UI : Provides company and maker
+
+activate UI
+UI -> CTRL : listFleetByMaker(request)
+
+activate CTRL
+CTRL -> Service : listFleetByMaker(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, LIST_COMPANY_FLEET)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> MakerRepo : findByName(request.makerName)
+
+            activate MakerRepo
+            MakerRepo --> Service : Optional<Manufacturer>
+            deactivate MakerRepo
+
+            alt maker exists
+
+                Service -> AircraftRepo : findByCompanyAndMaker(company, maker)
+
+                activate AircraftRepo
+                AircraftRepo --> Service : List<Aircraft>
+                deactivate AircraftRepo
+
+                alt matching aircraft exist
+
+                    loop for each aircraft
+                        Service -> AircraftDTO ** : AircraftDTO(aircraft)
+                    end
+
+                    Service --> CTRL : List<AircraftDTO>
+                    CTRL --> UI : List<AircraftDTO>
+                    UI --> ATCC : Display fleet by maker
+
+                else no matching aircraft exist
+
+                    Service --> CTRL : Empty list
+                    CTRL --> UI : Empty list
+                    UI --> ATCC : Display empty list message
+
+                end
+
+            else maker does not exist
+
+                Service --> CTRL : Listing failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display maker not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Listing failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Listing failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

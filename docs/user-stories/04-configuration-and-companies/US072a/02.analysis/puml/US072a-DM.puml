@@ -1,0 +1,67 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class AirTransportCompanyCollaborator {
+    email
+    name
+    position
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class Fleet {
+    aircraft
+}
+
+class Aircraft {
+    registrationNumber
+    registeredCountry
+    operationalStatus
+}
+
+class AircraftModel {
+    modelName
+    manufacturer
+}
+
+class AircraftEngineModel {
+    modelName
+}
+
+class AircraftConfiguration {
+    aircraftModel
+    engineModel
+}
+
+class CabinConfiguration {
+    totalSeats
+}
+
+class FleetByModelListing {
+    modelCriteria
+}
+
+AirTransportCompanyCollaborator "*" -- "1" AirTransportCompany : belongs to >
+AirTransportCompany "1" -- "1" Fleet : has >
+Fleet "1" o-- "*" Aircraft : contains >
+Aircraft "*" -- "1" AirTransportCompany : owned by >
+Aircraft "1" -- "1" AircraftConfiguration : has >
+AircraftConfiguration "*" -- "1" AircraftModel : uses >
+AircraftConfiguration "*" -- "1" AircraftEngineModel : uses >
+Aircraft "1" -- "1" CabinConfiguration : has >
+FleetByModelListing "1" -- "1" AircraftModel : filters by >
+FleetByModelListing "1" o-- "*" Aircraft : returns >
+
+@enduml

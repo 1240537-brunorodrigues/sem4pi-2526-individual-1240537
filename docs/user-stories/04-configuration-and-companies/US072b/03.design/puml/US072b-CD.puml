@@ -1,0 +1,205 @@
+@startuml
+title US072b-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ListFleetByMakerUI {
+        - companyId: String
+        - makerName: String
+        + requestData()
+        + displayFleet(aircraft: List<AircraftDTO>)
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ListFleetByMakerController {
+        + listFleetByMaker(request: ListFleetByMakerRequest): List<AircraftDTO>
+    }
+}
+
+package "application" #DDDDDD {
+    class ListFleetByMakerService {
+        + listFleetByMaker(request: ListFleetByMakerRequest): List<AircraftDTO>
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class ListFleetByMakerRequest {
+        - companyId: String
+        - makerName: String
+    }
+
+    class AircraftDTO {
+        - registrationNumber: String
+        - maker: String
+        - aircraftModel: String
+        - engineModel: String
+        - totalSeats: int
+        - registeredCountry: String
+        - operationalStatus: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - fleet: Fleet
+    }
+
+    class Fleet {
+        - aircraft: List<Aircraft>
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Aircraft {
+        - registrationNumber: AircraftRegistrationNumber
+        - configuration: AircraftConfiguration
+        - cabinConfiguration: CabinConfiguration
+        - registeredCountry: Country
+        - operationalStatus: OperationalStatus
+    }
+
+    class AircraftRegistrationNumber {
+        - value: String
+    }
+
+    class AircraftConfiguration {
+        - aircraftModel: AircraftModel
+        - engineModel: AircraftEngineModel
+    }
+
+    class AircraftModel {
+        - id: String
+        - modelName: AircraftModelName
+        - manufacturer: Manufacturer
+    }
+
+    class AircraftEngineModel {
+        - modelName: EngineModelName
+    }
+
+    class Manufacturer {
+        - name: String
+        - country: Country
+    }
+
+    class CabinConfiguration {
+        - seatsByClass: Map<String, Integer>
+        + totalSeats(): int
+    }
+
+    class Country {
+        - name: String
+        - code: String
+    }
+
+    class OperationalStatus {
+        - value: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class EngineModelName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface ManufacturerRepository {
+        + findByName(name: String): Optional<Manufacturer>
+    }
+
+    interface AircraftRepository {
+        + findByCompanyAndMaker(company: AirTransportCompany, maker: Manufacturer): List<Aircraft>
+    }
+}
+
+ListFleetByMakerUI --> ListFleetByMakerController : uses >
+ListFleetByMakerController --> ListFleetByMakerService : uses >
+ListFleetByMakerService --> AuthorizationService : checks permission >
+ListFleetByMakerService --> AirTransportCompanyRepository : retrieves company >
+ListFleetByMakerService --> CustomerCollaboratorRepository : verifies collaborator company >
+ListFleetByMakerService --> ManufacturerRepository : retrieves maker >
+ListFleetByMakerService --> AircraftRepository : retrieves aircraft by maker >
+ListFleetByMakerService --> AircraftDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany *-- Fleet
+Fleet "1" o-- "*" Aircraft
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Aircraft *-- AircraftRegistrationNumber
+Aircraft *-- AircraftConfiguration
+Aircraft *-- CabinConfiguration
+Aircraft *-- Country
+Aircraft *-- OperationalStatus
+
+AircraftConfiguration "*" --> "1" AircraftModel
+AircraftConfiguration "*" --> "1" AircraftEngineModel
+AircraftModel *-- AircraftModelName
+AircraftModel "*" --> "1" Manufacturer
+AircraftEngineModel *-- EngineModelName
+Manufacturer *-- Country
+
+@enduml

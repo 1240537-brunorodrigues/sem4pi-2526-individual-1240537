@@ -1,0 +1,132 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "ListFleetByAgeUI" as UI
+participant "ListFleetByAgeController" as CTRL
+participant "ListFleetByAgeService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "AgeCriteria" as AgeCriteria
+participant "AircraftRepository" as AircraftRepo
+participant "AircraftAgeCalculator" as AgeCalculator
+participant "AircraftDTO" as AircraftDTO
+
+activate ATCC
+
+ATCC -> UI : Requests to list company fleet by age
+
+activate UI
+UI --> ATCC : Requests company and age criteria
+deactivate UI
+
+ATCC -> UI : Provides company and age criteria
+
+activate UI
+UI -> CTRL : listFleetByAge(request)
+
+activate CTRL
+CTRL -> Service : listFleetByAge(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, LIST_COMPANY_FLEET)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> AgeCriteria ** : AgeCriteria(minimumAge, maximumAge, sortingOrder)
+
+            activate AgeCriteria
+            AgeCriteria --> Service : ageCriteria
+            deactivate AgeCriteria
+
+            Service -> AircraftRepo : findByCompany(company)
+
+            activate AircraftRepo
+            AircraftRepo --> Service : List<Aircraft>
+            deactivate AircraftRepo
+
+            loop for each aircraft
+                Service -> AgeCalculator : calculateAge(aircraft.referenceDate, currentDate)
+
+                activate AgeCalculator
+                AgeCalculator --> Service : age
+                deactivate AgeCalculator
+            end
+
+            Service -> Service : Filter aircraft by age criteria
+            Service -> Service : Sort aircraft by age
+
+            alt matching aircraft exist
+
+                loop for each aircraft
+                    Service -> AircraftDTO ** : AircraftDTO(aircraft, age)
+                end
+
+                Service --> CTRL : List<AircraftDTO>
+                CTRL --> UI : List<AircraftDTO>
+                UI --> ATCC : Display fleet by age
+
+            else no matching aircraft exist
+
+                Service --> CTRL : Empty list
+                CTRL --> UI : Empty list
+                UI --> ATCC : Display empty list message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Listing failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Listing failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml
