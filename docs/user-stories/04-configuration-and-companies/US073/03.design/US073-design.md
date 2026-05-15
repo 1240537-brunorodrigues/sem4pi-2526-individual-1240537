@@ -15,7 +15,7 @@ The flight route creation process is divided between the following components:
 * **AirportRepository:** retrieves origin and destination airports.
 * **FlightRouteRepository:** checks route uniqueness and stores the new route.
 * **FlightRoute:** domain entity representing the route.
-* **RouteCode:** value object representing the route identifier.
+* **RouteName:** value object representing the route name and validating the required format.
 * **FlightRoutePolicy:** domain policy responsible for validating route-specific rules.
 
 ---
@@ -39,7 +39,7 @@ The flight route creation process is divided between the following components:
 * **Service:** coordinates the use case.
 * **Repository:** abstracts lookup and persistence.
 * **Entity:** represents flight routes, companies and airports.
-* **Value Object:** represents route code.
+* **Value Object:** represents route name.
 * **Domain Policy:** centralizes route creation rules.
 * **DTO:** transfers created route data to the UI.
 
@@ -54,3 +54,5 @@ The flight route creation process is divided between the following components:
 * Origin and destination airports must be different.
 * Route uniqueness should be verified at repository or service level.
 * The route should be reusable by flight plan creation.
+* The route name should be validated by a `RouteName` value object.
+* The route name must follow the company's two-letter initials plus up to four digits.

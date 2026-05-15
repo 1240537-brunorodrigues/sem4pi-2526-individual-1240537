@@ -13,7 +13,9 @@ The implementation should include:
 * lookup of the selected air transport company;
 * lookup of origin and destination airports;
 * validation that origin and destination are different;
-* validation of route code, if used;
+* validation of route name format;
+* validation that the route name starts with the company's two-letter initials;
+* validation that the route name contains up to four digits after the company initials;
 * verification of route uniqueness within the company;
 * creation of the flight route;
 * persistence of the route.
@@ -30,7 +32,7 @@ Possible main classes:
 * `CreateFlightRouteRequest`
 * `FlightRouteDTO`
 * `FlightRoute`
-* `RouteCode`
+* `RouteName`
 * `FlightRoutePolicy`
 * `AirTransportCompany`
 * `CustomerCollaborator`
@@ -63,7 +65,10 @@ The following unit tests should be implemented:
 * Verify that a route cannot be created with a non-existing origin airport.
 * Verify that a route cannot be created with a non-existing destination airport.
 * Verify that origin and destination airports cannot be the same.
-* Verify that a duplicated route code is rejected.
+* Verify that a route cannot be created without a route name.
+* Verify that a route name that does not start with the company's two-letter initials is rejected.
+* Verify that a route name with more than four digits after the company initials is rejected.
+* Verify that a duplicated route name is rejected.
 * Verify that a duplicated route for the same company, origin and destination is rejected.
 * Verify that a successfully created route is stored.
 * Verify that failed route creation does not change the repository.
@@ -81,6 +86,7 @@ The following unit tests should be implemented:
 * **When** the collaborator creates a flight route
 * **Then** the system should store the new flight route
 * **And** the route should belong to the selected company
+* **And** the route name follows the required format
 
 **Test 2:** Collaborator from another company
 
@@ -115,6 +121,15 @@ The following unit tests should be implemented:
 * **Given** an authenticated user without permission to create flight routes
 * **When** the user tries to create a flight route
 * **Then** the system should deny access
+
+**Test 7:** Invalid route name format
+
+* **Given** an authenticated Air Transport Company Collaborator
+* **And** the collaborator belongs to the selected company
+* **And** the origin and destination airports exist
+* **And** the route name does not start with the company's two-letter initials or has more than four digits
+* **When** the collaborator tries to create the route
+* **Then** the system should reject the operation
 
 ---
 

@@ -14,7 +14,7 @@ participant "AuthorizationService" as AuthzService
 participant "AirTransportCompanyRepository" as CompanyRepo
 participant "CustomerCollaboratorRepository" as CollaboratorRepo
 participant "AirportRepository" as AirportRepo
-participant "RouteCode" as RouteCode
+participant "RouteName" as RouteName
 participant "FlightRoutePolicy" as RoutePolicy
 participant "FlightRouteRepository" as RouteRepo
 participant "FlightRoute:\n route" as Route
@@ -24,7 +24,7 @@ activate ATCC
 ATCC -> UI : Requests to create a flight route
 
 activate UI
-UI --> ATCC : Requests company, origin airport and destination airport
+UI --> ATCC : Requests company, route name,\norigin airport and destination airport
 deactivate UI
 
 ATCC -> UI : Provides route data
@@ -82,13 +82,13 @@ alt collaborator is authorized
 
                 alt origin and destination are valid
 
-                    Service -> RouteCode ** : RouteCode(request.routeCode)
+                    Service -> RouteName ** : RouteName(request.routeName, company.iataCode)
 
-                    activate RouteCode
-                    RouteCode --> Service : routeCode
-                    deactivate RouteCode
+                    activate RouteName
+                    RouteName --> Service : routeName
+                    deactivate RouteName
 
-                    Service -> RouteRepo : existsByCompanyAndCode(company, routeCode)
+                    Service -> RouteRepo : existsByRouteName(routeName)
 
                     activate RouteRepo
                     RouteRepo --> Service : true/false
@@ -100,9 +100,9 @@ alt collaborator is authorized
                     RouteRepo --> Service : true/false
                     deactivate RouteRepo
 
-                    alt route code and route are unique
+                    alt route name and route are unique
 
-                        Service -> Route ** : FlightRoute(routeCode, company,\noriginAirport, destinationAirport, description)
+                        Service -> Route ** : FlightRoute(routeName, company,\noriginAirport, destinationAirport, description)
 
                         activate Route
                         Route --> Service : route

@@ -13,7 +13,7 @@ activate ATCC
 ATCC -> System : Requests to create a flight route
 
 activate System
-System --> ATCC : Requests company, origin airport and destination airport
+System --> ATCC : Requests company, route name,\norigin airport and destination airport
 deactivate System
 
 ATCC -> System : Provides flight route data
@@ -22,10 +22,12 @@ activate System
 System --> System : Check if collaborator is authorized
 System --> System : Validate air transport company
 System --> System : Check if collaborator belongs to company
+System --> System : Validate route name format
+System --> System : Check route name uniqueness
 System --> System : Validate origin airport
 System --> System : Validate destination airport
 System --> System : Check if origin and destination are different
-System --> System : Check route uniqueness
+System --> System : Check route uniqueness by company, origin and destination
 
 alt route data is valid
     System --> System : Create flight route

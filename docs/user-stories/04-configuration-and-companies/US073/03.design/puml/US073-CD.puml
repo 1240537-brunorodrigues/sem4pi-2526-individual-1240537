@@ -9,7 +9,7 @@ skinparam classAttributeIconSize 0
 package "ui.console" #DDDDDD {
     class CreateFlightRouteUI {
         - companyId: String
-        - routeCode: String
+        - routeName: String
         - originAirportCode: String
         - destinationAirportCode: String
         - description: String
@@ -36,14 +36,14 @@ package "application" #DDDDDD {
 
     class CreateFlightRouteRequest {
         - companyId: String
-        - routeCode: String
+        - routeName: String
         - originAirportCode: String
         - destinationAirportCode: String
         - description: String
     }
 
     class FlightRouteDTO {
-        - routeCode: String
+        - routeName: String
         - companyId: String
         - originAirportCode: String
         - destinationAirportCode: String
@@ -75,6 +75,7 @@ package "domain" #DDDDDD {
     class AirTransportCompany {
         - id: String
         - companyName: CompanyName
+        - iataCode: AirlineIATACode
     }
 
     class CustomerCollaborator {
@@ -85,7 +86,7 @@ package "domain" #DDDDDD {
     }
 
     class FlightRoute {
-        - routeCode: RouteCode
+        - routeName: RouteName
         - company: AirTransportCompany
         - originAirport: Airport
         - destinationAirport: Airport
@@ -93,9 +94,9 @@ package "domain" #DDDDDD {
         + FlightRoute(...)
     }
 
-    class RouteCode {
+    class RouteName {
         - value: String
-        + RouteCode(value: String)
+        + RouteName(value: String, companyInitials: String)
     }
 
     class Airport {
@@ -126,6 +127,10 @@ package "domain" #DDDDDD {
         - value: String
     }
 
+    class AirlineIATACode {
+        - value: String
+    }
+
     class Email {
         - value: String
     }
@@ -146,7 +151,7 @@ package "repository" #DDDDDD {
 
     interface FlightRouteRepository {
         + existsByCompanyAndAirports(company: AirTransportCompany, origin: Airport, destination: Airport): boolean
-        + existsByCompanyAndCode(company: AirTransportCompany, routeCode: RouteCode): boolean
+        + existsByRouteName(routeName: RouteName): boolean
         + save(route: FlightRoute): void
     }
 }
@@ -168,12 +173,13 @@ User *-- Email
 
 AirTransportCompany --|> Customer
 AirTransportCompany *-- CompanyName
+AirTransportCompany *-- AirlineIATACode
 
 CustomerCollaborator "*" --> "1" Customer
 CustomerCollaborator "1" --> "1" User
 
 FlightRoute "*" --> "1" AirTransportCompany
-FlightRoute *-- RouteCode
+FlightRoute *-- RouteName
 FlightRoute "*" --> "1" Airport : origin
 FlightRoute "*" --> "1" Airport : destination
 

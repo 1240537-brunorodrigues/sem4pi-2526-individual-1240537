@@ -7,7 +7,7 @@
 As an Air Transport Company Collaborator, I want to create a flight route for my company.
 
 This functionality allows an authorized Air Transport Company Collaborator to create a flight route operated by their company. A route connects an origin airport to a destination airport and may later be used when creating flight plans.
-
+The flight route must have a unique route name composed of the company's two-letter initials followed by up to four digits, such as TP123.
 ---
 
 ### 1.2. Customer Specifications and Clarifications
@@ -21,6 +21,10 @@ This functionality allows an authorized Air Transport Company Collaborator to cr
 * A flight route belongs to an air transport company.
 * Flight plans are created based on existing routes.
 * Authentication and authorization must be enforced for all users and functionalities.
+* A flight route has a route name.
+* The route name must start with the company's two-letter initials.
+* The route name may include up to four digits after the company initials.
+* The route name must be unique.
 
 **From the client clarifications:**
 
@@ -37,13 +41,15 @@ No additional client clarifications are currently available.
 * **AC5:** The destination airport must exist in the system.
 * **AC6:** The origin airport and destination airport must be different.
 * **AC7:** The route must be associated with exactly one air transport company.
-* **AC8:** The route must have a unique identifier or code within the company.
-* **AC9:** The system must not create a duplicated route for the same company, origin and destination, unless future rules allow multiple variants.
-* **AC10:** The route must be stored after successful creation.
-* **AC11:** Only an authenticated and authorized Air Transport Company Collaborator can create routes.
-* **AC12:** The system must display a success message when the route is created successfully.
-* **AC13:** The system must display an error message when route creation fails.
-
+* **AC8:** The route must have a route name.
+* **AC9:** The route name must start with the company's two-letter initials.
+* **AC10:** The route name may include up to four digits after the company initials.
+* **AC11:** The route name must be unique.
+* **AC12:** The system must not create a duplicated route for the same company, origin and destination, unless future rules allow multiple variants.
+* **AC13:** The route must be stored after successful creation.
+* **AC14:** Only an authenticated and authorized Air Transport Company Collaborator can create routes.
+* **AC15:** The system must display a success message when the route is created successfully.
+* **AC16:** The system must display an error message when route creation fails.
 ---
 
 ### 1.4. Found out Dependencies
@@ -67,8 +73,8 @@ No additional client clarifications are currently available.
     * Destination airport
 
 * Typed data:
-    * Route code or route name, if required
-    * Optional route description
+  * Route name
+  * Optional route description
 
 **Output Data:**
 
@@ -95,4 +101,4 @@ No additional client clarifications are currently available.
 * The route belongs to an air transport company.
 * A route should not be created by a collaborator from another company.
 * The route may later be used to create flight plans.
-* The first implementation may use a simple route code or generate one automatically from company, origin and destination.
+* The route name should follow the format formed by the company's two-letter initials followed by up to four digits, such as TP123.

@@ -12,7 +12,7 @@ The relevant domain concepts for this user story are:
 * **Origin Airport:** airport where the route starts.
 * **Destination Airport:** airport where the route ends.
 * **Airport:** registered airport in the system.
-* **Route Code:** identifier of the route within the company.
+* **Route Name:** unique identifier of the route, composed of the company's two-letter initials followed by up to four digits.
 * **Flight Plan:** future operational plan created based on a flight route.
 
 ---
@@ -26,9 +26,14 @@ The relevant domain concepts for this user story are:
 * The destination airport must exist.
 * The origin airport and destination airport must be different.
 * A flight route must belong to exactly one air transport company.
-* A duplicated route should not be created for the same company, origin and destination.
+* A duplicated route name should not be created.
+* A duplicated route should not be created for the same company, origin and destination, unless future rules allow multiple route variants.
 * The route must be stored after successful creation.
 * If route creation fails, the system state must remain unchanged.
+* A flight route must have a route name.
+* The route name must start with the company's two-letter initials.
+* The route name may include up to four digits after the company initials.
+* The route name must be unique.
 
 ---
 
