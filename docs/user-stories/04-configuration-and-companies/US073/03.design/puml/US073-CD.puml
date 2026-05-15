@@ -1,0 +1,184 @@
+@startuml
+title US073-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class CreateFlightRouteUI {
+        - companyId: String
+        - routeCode: String
+        - originAirportCode: String
+        - destinationAirportCode: String
+        - description: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class CreateFlightRouteController {
+        + createFlightRoute(request: CreateFlightRouteRequest): FlightRouteDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class CreateFlightRouteService {
+        + createFlightRoute(request: CreateFlightRouteRequest): FlightRouteDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class CreateFlightRouteRequest {
+        - companyId: String
+        - routeCode: String
+        - originAirportCode: String
+        - destinationAirportCode: String
+        - description: String
+    }
+
+    class FlightRouteDTO {
+        - routeCode: String
+        - companyId: String
+        - originAirportCode: String
+        - destinationAirportCode: String
+        - description: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class FlightRoute {
+        - routeCode: RouteCode
+        - company: AirTransportCompany
+        - originAirport: Airport
+        - destinationAirport: Airport
+        - description: String
+        + FlightRoute(...)
+    }
+
+    class RouteCode {
+        - value: String
+        + RouteCode(value: String)
+    }
+
+    class Airport {
+        - name: String
+        - iataCode: IATACode
+        - icaoCode: ICAOCode
+        - coordinate: Coordinate
+    }
+
+    class IATACode {
+        - value: String
+    }
+
+    class ICAOCode {
+        - value: String
+    }
+
+    class Coordinate {
+        - latitude: double
+        - longitude: double
+    }
+
+    class FlightRoutePolicy {
+        + isValidRoute(origin: Airport, destination: Airport): boolean
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface AirportRepository {
+        + findByCode(code: String): Optional<Airport>
+    }
+
+    interface FlightRouteRepository {
+        + existsByCompanyAndAirports(company: AirTransportCompany, origin: Airport, destination: Airport): boolean
+        + existsByCompanyAndCode(company: AirTransportCompany, routeCode: RouteCode): boolean
+        + save(route: FlightRoute): void
+    }
+}
+
+CreateFlightRouteUI --> CreateFlightRouteController : uses >
+CreateFlightRouteController --> CreateFlightRouteService : uses >
+CreateFlightRouteService --> AuthorizationService : checks permission >
+CreateFlightRouteService --> AirTransportCompanyRepository : retrieves company >
+CreateFlightRouteService --> CustomerCollaboratorRepository : verifies collaborator company >
+CreateFlightRouteService --> AirportRepository : retrieves airports >
+CreateFlightRouteService --> FlightRouteRepository : checks/saves route >
+CreateFlightRouteService --> FlightRoutePolicy : validates route >
+CreateFlightRouteService --> FlightRouteDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+FlightRoute "*" --> "1" AirTransportCompany
+FlightRoute *-- RouteCode
+FlightRoute "*" --> "1" Airport : origin
+FlightRoute "*" --> "1" Airport : destination
+
+Airport *-- IATACode
+Airport *-- ICAOCode
+Airport *-- Coordinate
+
+@enduml

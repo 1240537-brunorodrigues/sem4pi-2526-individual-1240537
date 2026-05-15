@@ -1,0 +1,174 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "CreateFlightRouteUI" as UI
+participant "CreateFlightRouteController" as CTRL
+participant "CreateFlightRouteService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "AirportRepository" as AirportRepo
+participant "RouteCode" as RouteCode
+participant "FlightRoutePolicy" as RoutePolicy
+participant "FlightRouteRepository" as RouteRepo
+participant "FlightRoute:\n route" as Route
+
+activate ATCC
+
+ATCC -> UI : Requests to create a flight route
+
+activate UI
+UI --> ATCC : Requests company, origin airport and destination airport
+deactivate UI
+
+ATCC -> UI : Provides route data
+
+activate UI
+UI -> CTRL : createFlightRoute(request)
+
+activate CTRL
+CTRL -> Service : createFlightRoute(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, CREATE_FLIGHT_ROUTE)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> AirportRepo : findByCode(request.originAirportCode)
+
+            activate AirportRepo
+            AirportRepo --> Service : Optional<Airport>
+            deactivate AirportRepo
+
+            Service -> AirportRepo : findByCode(request.destinationAirportCode)
+
+            activate AirportRepo
+            AirportRepo --> Service : Optional<Airport>
+            deactivate AirportRepo
+
+            alt origin and destination airports exist
+
+                Service -> RoutePolicy : isValidRoute(originAirport, destinationAirport)
+
+                activate RoutePolicy
+                RoutePolicy --> Service : true/false
+                deactivate RoutePolicy
+
+                alt origin and destination are valid
+
+                    Service -> RouteCode ** : RouteCode(request.routeCode)
+
+                    activate RouteCode
+                    RouteCode --> Service : routeCode
+                    deactivate RouteCode
+
+                    Service -> RouteRepo : existsByCompanyAndCode(company, routeCode)
+
+                    activate RouteRepo
+                    RouteRepo --> Service : true/false
+                    deactivate RouteRepo
+
+                    Service -> RouteRepo : existsByCompanyAndAirports(company, originAirport, destinationAirport)
+
+                    activate RouteRepo
+                    RouteRepo --> Service : true/false
+                    deactivate RouteRepo
+
+                    alt route code and route are unique
+
+                        Service -> Route ** : FlightRoute(routeCode, company,\noriginAirport, destinationAirport, description)
+
+                        activate Route
+                        Route --> Service : route
+                        deactivate Route
+
+                        Service -> RouteRepo : save(route)
+
+                        activate RouteRepo
+                        RouteRepo --> Service : saved
+                        deactivate RouteRepo
+
+                        Service --> CTRL : FlightRouteDTO
+                        CTRL --> UI : Route created successfully
+                        UI --> ATCC : Display success message
+
+                    else duplicated route
+
+                        Service --> CTRL : Operation failed
+                        CTRL --> UI : Error
+                        UI --> ATCC : Display duplicated route error
+
+                    end
+
+                else invalid route
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display invalid route error
+
+                end
+
+            else origin or destination airport does not exist
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display airport not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class AirTransportCompanyCollaborator {
+    email
+    name
+    position
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class FlightRoute {
+    routeCode
+    description
+}
+
+class Airport {
+    name
+    iataCode
+    icaoCode
+    coordinates
+}
+
+class OriginAirport {
+}
+
+class DestinationAirport {
+}
+
+class FlightPlan {
+    flightNumber
+}
+
+AirTransportCompanyCollaborator "*" -- "1" AirTransportCompany : belongs to >
+AirTransportCompany "1" -- "*" FlightRoute : owns >
+FlightRoute "*" -- "1" Airport : origin >
+FlightRoute "*" -- "1" Airport : destination >
+Airport <|-- OriginAirport
+Airport <|-- DestinationAirport
+FlightRoute "1" -- "*" FlightPlan : may be used by >
+
+@enduml
