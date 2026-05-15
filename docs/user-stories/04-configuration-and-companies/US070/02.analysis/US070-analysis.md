@@ -17,6 +17,7 @@ The relevant domain concepts for this user story are:
 * **Cabin Configuration:** number of seats by class.
 * **Registered Country:** country where the aircraft is registered.
 * **Operational Status:** current operational state of the aircraft.
+* **Flight Crew Size:** number of flight crew members assigned to the aircraft configuration.
 
 ---
 
@@ -34,6 +35,8 @@ The relevant domain concepts for this user story are:
 * Seat numbers cannot be negative.
 * The aircraft must have an operational status.
 * A successfully registered aircraft becomes part of the company's fleet.
+* The aircraft must have a number of flight crew members.
+* The number of flight crew members must be a positive integer.
 
 ---
 
@@ -45,6 +48,7 @@ The relevant domain concepts for this user story are:
 * The selected air transport company must exist.
 * The selected aircraft model must exist.
 * The selected engine model/configuration must be certified for the aircraft model.
+* The number of flight crew members must be provided.
 
 ---
 

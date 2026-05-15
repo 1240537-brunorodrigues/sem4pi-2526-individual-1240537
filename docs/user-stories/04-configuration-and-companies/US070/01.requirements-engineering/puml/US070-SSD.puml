@@ -29,6 +29,7 @@ System --> System : Check registration number uniqueness
 System --> System : Validate registered country
 System --> System : Validate cabin configuration
 System --> System : Check total seats do not exceed model capacity
+System --> System : Validate number of flight crew members
 System --> System : Validate operational status
 
 alt aircraft data is valid

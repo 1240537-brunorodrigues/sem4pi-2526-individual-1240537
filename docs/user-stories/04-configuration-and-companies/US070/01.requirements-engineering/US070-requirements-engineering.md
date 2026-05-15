@@ -6,8 +6,8 @@
 
 As an Air Transport Company Collaborator, I want to add an aircraft to my company's fleet.
 
-This functionality allows an authorized Air Transport Company Collaborator to register an aircraft in their company's fleet. The aircraft must be associated with an existing aircraft model and a valid engine configuration. The aircraft must have a unique registration number, a registered country, an operational status and a cabin configuration with seats by class.
-
+This functionality allows an authorized Air Transport Company Collaborator to register an aircraft in their company's fleet. The aircraft must be associated with an existing aircraft model and a valid engine configuration. 
+The aircraft must have a unique registration number, a registered country, an operational status, a cabin configuration with seats by class and a number of flight crew members.
 ---
 
 ### 1.2. Customer Specifications and Clarifications
@@ -24,6 +24,7 @@ This functionality allows an authorized Air Transport Company Collaborator to re
 * An aircraft is registered in a country, which may not be the company's home country.
 * An aircraft has an operational status.
 * Authentication and authorization must be enforced for all users and functionalities.
+* An aircraft has a number of elements of the flight crew.
 
 **From the client clarifications:**
 
@@ -44,11 +45,12 @@ No additional client clarifications are currently available.
 * **AC9:** The aircraft must have a cabin configuration.
 * **AC10:** The number of seats for each class must be provided.
 * **AC11:** The total number of seats must not exceed the model's capacity.
-* **AC12:** The aircraft must have an operational status.
-* **AC13:** The system must store the aircraft in the company's fleet after successful registration.
-* **AC14:** Only an authenticated and authorized Air Transport Company Collaborator can add aircraft to their company.
-* **AC15:** The system must display a success message when the aircraft is added successfully.
-* **AC16:** The system must display an error message when the operation fails.
+* **AC13:** The aircraft must have a number of flight crew members.
+* **AC14:** The number of flight crew members must be a positive integer.
+* **AC15:** The system must store the aircraft in the company's fleet after successful registration.
+* **AC16:** Only an authenticated and authorized Air Transport Company Collaborator can add aircraft to their company.
+* **AC17:** The system must display a success message when the aircraft is added successfully.
+* **AC18:** The system must display an error message when the operation fails.
 
 ---
 
@@ -79,6 +81,7 @@ No additional client clarifications are currently available.
 * Typed data:
     * Aircraft registration number
     * Number of seats by class
+    * Number of flight crew members
 
 **Possible cabin classes:**
 
@@ -114,3 +117,4 @@ No additional client clarifications are currently available.
 * The aircraft must not be created with a seat capacity above the selected model's capacity.
 * The aircraft's registered country may be different from the company's home country.
 * The aircraft should be created with an operational status that allows later rules such as decommissioning.
+* The number of flight crew members should be stored with the aircraft because it is part of the aircraft definition in the specification.

@@ -29,6 +29,7 @@ class Aircraft {
     registrationNumber
     registeredCountry
     operationalStatus
+    flightCrewSize
 }
 
 class AircraftModel {

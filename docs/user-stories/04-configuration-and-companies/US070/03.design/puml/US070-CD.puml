@@ -15,6 +15,7 @@ package "ui.console" #DDDDDD {
         - registeredCountry: String
         - operationalStatus: String
         - seatsByClass: Map<String, Integer>
+        - flightCrewSize: int
         + requestData()
         + displayMessage(message: String)
         + displayError(message: String)
@@ -44,6 +45,7 @@ package "application" #DDDDDD {
         - registeredCountry: String
         - operationalStatus: String
         - seatsByClass: Map<String, Integer>
+        - flightCrewSize: int
     }
 
     class AircraftDTO {
@@ -54,6 +56,7 @@ package "application" #DDDDDD {
         - registeredCountry: String
         - operationalStatus: String
         - totalSeats: int
+        - flightCrewSize: int
     }
 }
 
@@ -104,7 +107,13 @@ package "domain" #DDDDDD {
         - cabinConfiguration: CabinConfiguration
         - registeredCountry: Country
         - operationalStatus: OperationalStatus
+        - flightCrewSize: FlightCrewSize
         + Aircraft(...)
+    }
+
+    class FlightCrewSize {
+        - value: int
+        + FlightCrewSize(value: int)
     }
 
     class AircraftRegistrationNumber {
@@ -201,6 +210,7 @@ AddAircraftToCompanyFleetService --> AircraftEngineModelRepository : retrieves e
 AddAircraftToCompanyFleetService --> AircraftRepository : checks/saves aircraft >
 AddAircraftToCompanyFleetService --> AircraftConfigurationPolicy : validates configuration >
 AddAircraftToCompanyFleetService --> AircraftDTO : returns >
+AddAircraftToCompanyFleetService --> FlightCrewSize : creates >
 
 AuthorizationService --> User : checks >
 User "1" o-- "1..*" Role
@@ -221,6 +231,7 @@ Aircraft *-- AircraftConfiguration
 Aircraft *-- CabinConfiguration
 Aircraft *-- Country
 Aircraft *-- OperationalStatus
+Aircraft *-- FlightCrewSize
 
 AircraftConfiguration "*" --> "1" AircraftModel
 AircraftConfiguration "*" --> "1" AircraftEngineModel

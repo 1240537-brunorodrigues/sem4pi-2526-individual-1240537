@@ -20,6 +20,7 @@ The aircraft registration process is divided between the following components:
 * **AircraftConfiguration:** domain object representing model and engine configuration.
 * **CabinConfiguration:** domain object responsible for validating seat counts.
 * **AircraftConfigurationPolicy:** domain policy responsible for validating if the selected engine model is certified for the aircraft model.
+* **FlightCrewSize:** value object responsible for validating the number of flight crew members.
 
 ---
 
@@ -42,7 +43,7 @@ The aircraft registration process is divided between the following components:
 * **Service:** coordinates the use case.
 * **Repository:** abstracts lookup and persistence.
 * **Entity:** represents aircraft and companies.
-* **Value Object:** represents registration number and cabin configuration values.
+* **Value Object:** represents registration number, cabin configuration values and flight crew size.
 * **Domain Policy:** validates aircraft model and engine configuration compatibility.
 * **DTO:** transfers registered aircraft data to the UI.
 
@@ -57,3 +58,4 @@ The aircraft registration process is divided between the following components:
 * Cabin configuration should protect the invariant that total seats do not exceed model capacity.
 * The selected engine model must be certified for the selected aircraft model.
 * The collaborator must belong to the company receiving the aircraft.
+* The number of flight crew members should be validated as a positive integer.

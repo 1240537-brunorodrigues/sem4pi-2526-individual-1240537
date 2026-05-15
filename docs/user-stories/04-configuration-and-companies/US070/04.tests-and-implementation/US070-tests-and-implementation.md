@@ -22,6 +22,7 @@ The implementation should include:
 * verification that total seats do not exceed the aircraft model capacity;
 * creation of the aircraft;
 * persistence of the aircraft in the company's fleet.
+* validation of number of flight crew members;
 
 ---
 
@@ -57,6 +58,7 @@ Possible main classes:
 * `AircraftRepository`
 * `InMemoryAirTransportCompanyRepository`
 * `InMemoryAircraftRepository`
+* `FlightCrewSize`
 
 ---
 
@@ -79,6 +81,9 @@ The following unit tests should be implemented:
 * Verify that total seats cannot exceed the aircraft model capacity.
 * Verify that a successfully added aircraft is stored.
 * Verify that failed registration does not change the company's fleet.
+* Verify that an aircraft cannot be added without a number of flight crew members.
+* Verify that zero or negative flight crew size is rejected.
+* Verify that a successfully added aircraft stores the number of flight crew members.
 
 ---
 
@@ -90,7 +95,7 @@ The following unit tests should be implemented:
 * **And** the collaborator belongs to the selected company
 * **And** an existing aircraft model
 * **And** a certified engine model for that aircraft model
-* **And** valid aircraft data
+* **And** valid aircraft data, including cabin configuration and number of flight crew members
 * **When** the collaborator adds the aircraft to the company fleet
 * **Then** the system should register the aircraft
 * **And** the aircraft should belong to the selected company's fleet
@@ -137,6 +142,15 @@ The following unit tests should be implemented:
 * **Given** an authenticated user without permission to add aircraft to a company fleet
 * **When** the user tries to add an aircraft
 * **Then** the system should deny access
+
+**Test 8:** Invalid flight crew size
+
+* **Given** an authenticated Air Transport Company Collaborator
+* **And** the collaborator belongs to the selected company
+* **And** valid aircraft model and engine configuration
+* **And** aircraft data with an invalid number of flight crew members
+* **When** the collaborator tries to add the aircraft
+* **Then** the system should reject the registration
 
 ---
 

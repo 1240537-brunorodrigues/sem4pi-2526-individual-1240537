@@ -19,6 +19,7 @@ participant "AircraftConfigurationPolicy" as ConfigPolicy
 participant "AircraftRepository" as AircraftRepo
 participant "AircraftRegistrationNumber" as RegistrationNumber
 participant "CabinConfiguration" as CabinConfig
+participant "FlightCrewSize" as FlightCrewSize
 participant "Aircraft:\n aircraft" as Aircraft
 
 activate ATCC
@@ -26,7 +27,7 @@ activate ATCC
 ATCC -> UI : Requests to add an aircraft to company fleet
 
 activate UI
-UI --> ATCC : Requests aircraft data, model, engine and cabin configuration
+UI --> ATCC : Requests aircraft data, model, engine,\ncabin configuration and flight crew size
 deactivate UI
 
 ATCC -> UI : Provides aircraft data
@@ -112,27 +113,43 @@ alt collaborator is authorized
 
                         alt cabin configuration is valid
 
-                            Service -> Aircraft ** : Aircraft(registrationNumber, company,\nconfiguration, cabinConfiguration, country, status)
+                            Service -> FlightCrewSize ** : FlightCrewSize(request.flightCrewSize)
 
-                            activate Aircraft
-                            Aircraft --> Service : aircraft
-                            deactivate Aircraft
+                            activate FlightCrewSize
+                            FlightCrewSize --> Service : flightCrewSize
+                            deactivate FlightCrewSize
 
-                            Service -> AircraftRepo : save(aircraft)
+                            alt flight crew size is valid
 
-                            activate AircraftRepo
-                            AircraftRepo --> Service : saved
-                            deactivate AircraftRepo
+                                Service -> Aircraft ** : Aircraft(registrationNumber, company,\nconfiguration, cabinConfiguration,\nflightCrewSize, country, status)
 
-                            Service -> CompanyRepo : save(company)
+                                activate Aircraft
+                                Aircraft --> Service : aircraft
+                                deactivate Aircraft
 
-                            activate CompanyRepo
-                            CompanyRepo --> Service : saved
-                            deactivate CompanyRepo
+                                Service -> AircraftRepo : save(aircraft)
 
-                            Service --> CTRL : AircraftDTO
-                            CTRL --> UI : Aircraft added successfully
-                            UI --> ATCC : Display success message
+                                activate AircraftRepo
+                                AircraftRepo --> Service : saved
+                                deactivate AircraftRepo
+
+                                Service -> CompanyRepo : save(company)
+
+                                activate CompanyRepo
+                                CompanyRepo --> Service : saved
+                                deactivate CompanyRepo
+
+                                Service --> CTRL : AircraftDTO
+                                CTRL --> UI : Aircraft added successfully
+                                UI --> ATCC : Display success message
+
+                            else flight crew size is invalid
+
+                                Service --> CTRL : Operation failed
+                                CTRL --> UI : Error
+                                UI --> ATCC : Display invalid flight crew size error
+
+                            end
 
                         else cabin configuration exceeds model capacity
 
