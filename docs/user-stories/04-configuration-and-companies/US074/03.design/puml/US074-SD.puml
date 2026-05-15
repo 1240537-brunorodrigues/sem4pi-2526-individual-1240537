@@ -1,0 +1,152 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "DeleteFlightRouteUI" as UI
+participant "DeleteFlightRouteController" as CTRL
+participant "DeleteFlightRouteService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "RouteName" as RouteName
+participant "FlightRouteRepository" as RouteRepo
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "RouteDeactivationPolicy" as DeactivationPolicy
+participant "FlightRoute:\n route" as Route
+
+activate ATCC
+
+ATCC -> UI : Requests to deactivate a flight route
+
+activate UI
+UI --> ATCC : Requests company, route and deactivation date
+deactivate UI
+
+ATCC -> UI : Provides company, route and deactivation date
+
+activate UI
+UI -> CTRL : deleteFlightRoute(request)
+
+activate CTRL
+CTRL -> Service : deleteFlightRoute(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, DELETE_FLIGHT_ROUTE)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> RouteName ** : RouteName(request.routeName)
+
+            activate RouteName
+            RouteName --> Service : routeName
+            deactivate RouteName
+
+            Service -> RouteRepo : findByCompanyAndName(company, routeName)
+
+            activate RouteRepo
+            RouteRepo --> Service : Optional<FlightRoute>
+            deactivate RouteRepo
+
+            alt route exists and belongs to company
+
+                Service -> FlightPlanRepo : existsPlannedFlightsAfter(route, request.deactivationDate)
+
+                activate FlightPlanRepo
+                FlightPlanRepo --> Service : true/false
+                deactivate FlightPlanRepo
+
+                Service -> DeactivationPolicy : canDeactivate(route, date, hasPlannedFlightsAfterDate)
+
+                activate DeactivationPolicy
+                DeactivationPolicy --> Service : true/false
+                deactivate DeactivationPolicy
+
+                alt route can be deactivated
+
+                    Service -> Route : deactivateFrom(request.deactivationDate)
+
+                    activate Route
+                    Route --> Service : route deactivated
+                    deactivate Route
+
+                    Service -> RouteRepo : save(route)
+
+                    activate RouteRepo
+                    RouteRepo --> Service : saved
+                    deactivate RouteRepo
+
+                    Service --> CTRL : FlightRouteDTO
+                    CTRL --> UI : Deactivation successful
+                    UI --> ATCC : Display success message
+
+                else route has planned flights after date
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display planned flights error
+
+                end
+
+            else route does not exist
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display route not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

@@ -1,0 +1,179 @@
+@startuml
+title US074-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class DeleteFlightRouteUI {
+        - companyId: String
+        - routeName: String
+        - deactivationDate: LocalDate
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class DeleteFlightRouteController {
+        + deleteFlightRoute(request: DeleteFlightRouteRequest): FlightRouteDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class DeleteFlightRouteService {
+        + deleteFlightRoute(request: DeleteFlightRouteRequest): FlightRouteDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class DeleteFlightRouteRequest {
+        - companyId: String
+        - routeName: String
+        - deactivationDate: LocalDate
+    }
+
+    class FlightRouteDTO {
+        - routeName: String
+        - companyId: String
+        - status: String
+        - deactivationDate: LocalDate
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class FlightRoute {
+        - routeName: RouteName
+        - company: AirTransportCompany
+        - originAirport: Airport
+        - destinationAirport: Airport
+        - status: RouteStatus
+        - deactivationDate: LocalDate
+        + deactivateFrom(date: LocalDate): void
+        + belongsTo(company: AirTransportCompany): boolean
+        + isActiveOn(date: LocalDate): boolean
+    }
+
+    class RouteName {
+        - value: String
+        + RouteName(value: String)
+    }
+
+    class RouteStatus {
+        - value: String
+    }
+
+    class Airport {
+        - name: String
+        - iataCode: IATACode
+        - icaoCode: ICAOCode
+    }
+
+    class RouteDeactivationPolicy {
+        + canDeactivate(route: FlightRoute, date: LocalDate, hasPlannedFlightsAfterDate: boolean): boolean
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class IATACode {
+        - value: String
+    }
+
+    class ICAOCode {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface FlightRouteRepository {
+        + findByCompanyAndName(company: AirTransportCompany, routeName: RouteName): Optional<FlightRoute>
+        + save(route: FlightRoute): void
+    }
+
+    interface FlightPlanRepository {
+        + existsPlannedFlightsAfter(route: FlightRoute, date: LocalDate): boolean
+    }
+}
+
+DeleteFlightRouteUI --> DeleteFlightRouteController : uses >
+DeleteFlightRouteController --> DeleteFlightRouteService : uses >
+DeleteFlightRouteService --> AuthorizationService : checks permission >
+DeleteFlightRouteService --> AirTransportCompanyRepository : retrieves company >
+DeleteFlightRouteService --> CustomerCollaboratorRepository : verifies collaborator company >
+DeleteFlightRouteService --> FlightRouteRepository : retrieves/saves route >
+DeleteFlightRouteService --> FlightPlanRepository : checks planned flights >
+DeleteFlightRouteService --> RouteDeactivationPolicy : validates deactivation >
+DeleteFlightRouteService --> FlightRouteDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+FlightRoute "*" --> "1" AirTransportCompany
+FlightRoute *-- RouteName
+FlightRoute *-- RouteStatus
+FlightRoute "*" --> "1" Airport : origin
+FlightRoute "*" --> "1" Airport : destination
+
+Airport *-- IATACode
+Airport *-- ICAOCode
+
+@enduml

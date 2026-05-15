@@ -1,0 +1,40 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> System : Requests to deactivate a flight route
+
+activate System
+System --> ATCC : Requests company, route and deactivation date
+deactivate System
+
+ATCC -> System : Provides company, route and deactivation date
+
+activate System
+System --> System : Check if collaborator is authorized
+System --> System : Validate air transport company
+System --> System : Check if collaborator belongs to company
+System --> System : Validate flight route
+System --> System : Check if route belongs to company
+System --> System : Validate deactivation date
+System --> System : Check planned flights after deactivation date
+
+alt route can be deactivated
+    System --> System : Deactivate route from selected date onwards
+    System --> ATCC : Flight route deactivated successfully
+else route cannot be deactivated
+    System --> ATCC : Display error message
+end
+
+deactivate System
+deactivate ATCC
+
+@enduml
