@@ -1,0 +1,134 @@
+@startuml
+title US103-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.time" #DDDDDD {
+    class SimulationClock {
+        - currentStep: TimeStep
+        - timeStepInterval: int
+        + currentStep(): TimeStep
+        + advance(): TimeStep
+    }
+
+    class TimeStep {
+        - index: int
+        - startTime: long
+        - endTime: long
+    }
+}
+
+package "c.simulation.process" #DDDDDD {
+    class MainSimulationProcess {
+        - processId: int
+        + runSynchronizedSimulation()
+    }
+
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        - status: String
+        + executeStep(step: TimeStep)
+        + sendPositionUpdate(update: PositionUpdate)
+    }
+}
+
+package "c.simulation.sync" #DDDDDD {
+    class StepCoordinator {
+        + determineExpectedProcesses(step: TimeStep): ExpectedUpdateSet
+        + removeCompletedProcesses(expectedSet: ExpectedUpdateSet)
+    }
+
+    class ExpectedUpdateSet {
+        - expectedFlightProcessIds: List<int>
+        + contains(processId: int): boolean
+        + isComplete(buffer: StepUpdateBuffer): boolean
+    }
+
+    class StepUpdateBuffer {
+        - step: TimeStep
+        - updates: List<PositionUpdate>
+        + add(update: PositionUpdate)
+        + containsUpdateFrom(processId: int): boolean
+        + getUpdates(): List<PositionUpdate>
+        + clear()
+    }
+
+    class StepBarrier {
+        + canAdvance(expectedSet: ExpectedUpdateSet, buffer: StepUpdateBuffer): boolean
+    }
+
+    class PositionUpdateValidator {
+        + validate(update: PositionUpdate, currentStep: TimeStep, expectedSet: ExpectedUpdateSet): SynchronizationValidationResult
+    }
+
+    class SynchronizationValidationResult {
+        - valid: boolean
+        - errors: List<String>
+    }
+
+    class SynchronizationIssueHandler {
+        + handle(issue: SynchronizationIssue)
+    }
+
+    class SynchronizationIssue {
+        - type: String
+        - description: String
+    }
+}
+
+package "c.simulation.ipc" #DDDDDD {
+    class MovementPipeReader {
+        + read(): String
+    }
+
+    class MovementMessageDecoder {
+        + decode(rawMessage: String): PositionUpdate
+    }
+}
+
+package "c.simulation.movement" #DDDDDD {
+    class PositionUpdate {
+        - processId: int
+        - aircraftId: String
+        - timeStepIndex: int
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+MainSimulationProcess --> SimulationClock : controls >
+MainSimulationProcess --> StepCoordinator : determines expected updates >
+MainSimulationProcess --> MovementPipeReader : reads updates >
+MainSimulationProcess --> MovementMessageDecoder : decodes >
+MainSimulationProcess --> PositionUpdateValidator : validates >
+MainSimulationProcess --> StepUpdateBuffer : stores current step updates >
+MainSimulationProcess --> StepBarrier : checks if can advance >
+MainSimulationProcess --> SynchronizationIssueHandler : handles issues >
+MainSimulationProcess --> SimulationLogger : logs >
+
+FlightProcess --> TimeStep : executes >
+FlightProcess --> PositionUpdate : sends >
+
+SimulationClock *-- TimeStep
+StepCoordinator --> ExpectedUpdateSet : creates >
+ExpectedUpdateSet --> StepUpdateBuffer : checks completeness >
+StepBarrier --> ExpectedUpdateSet : checks >
+StepBarrier --> StepUpdateBuffer : checks >
+StepUpdateBuffer "1" o-- "*" PositionUpdate
+PositionUpdateValidator --> SynchronizationValidationResult : returns >
+SynchronizationIssueHandler --> SynchronizationIssue : handles >
+SynchronizationIssueHandler --> SimulationLogger : logs >
+
+@enduml

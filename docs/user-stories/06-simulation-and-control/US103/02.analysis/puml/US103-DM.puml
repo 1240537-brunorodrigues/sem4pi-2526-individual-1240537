@@ -1,0 +1,77 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class SimulationEngine {
+    currentTimeStep
+    timeStepInterval
+}
+
+class MainSimulationProcess {
+    processId
+    currentTimeStep
+}
+
+class FlightProcess {
+    processId
+    flightId
+    status
+}
+
+class TimeStep {
+    index
+    startTime
+    endTime
+}
+
+class PositionUpdate {
+    aircraftId
+    timeStep
+    latitude
+    longitude
+    altitude
+}
+
+class ExpectedUpdateSet {
+    expectedFlightProcesses
+}
+
+class StepUpdateBuffer {
+    updates
+}
+
+class StepBarrier {
+    completed
+}
+
+class SynchronizationIssue {
+    type
+    description
+}
+
+class SimulationLogger {
+    entries
+}
+
+SimulationEngine "1" -- "1" MainSimulationProcess : controls >
+SimulationEngine "1" -- "*" TimeStep : progresses through >
+MainSimulationProcess "1" -- "1" TimeStep : current >
+MainSimulationProcess "1" -- "1..*" FlightProcess : coordinates >
+FlightProcess "*" -- "*" PositionUpdate : sends >
+PositionUpdate "*" -- "1" TimeStep : belongs to >
+MainSimulationProcess "1" -- "1" ExpectedUpdateSet : defines >
+MainSimulationProcess "1" -- "1" StepUpdateBuffer : collects >
+MainSimulationProcess "1" -- "1" StepBarrier : waits at >
+StepUpdateBuffer "1" o-- "*" PositionUpdate : stores >
+ExpectedUpdateSet "1" o-- "*" FlightProcess : expects >
+MainSimulationProcess "1" -- "0..*" SynchronizationIssue : detects >
+MainSimulationProcess "1" -- "1" SimulationLogger : logs >
+
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Simulation Engine" as Engine
+participant ":Main Simulation Process" as MainProcess
+participant ":Flight Process" as FlightProcess
+
+activate Engine
+
+Engine -> MainProcess : Start synchronized simulation
+
+activate MainProcess
+MainProcess --> MainProcess : Initialize current time step
+MainProcess --> MainProcess : Determine active flight processes
+
+loop for each simulation time step
+    MainProcess --> FlightProcess : Allow current time step execution
+
+    activate FlightProcess
+    FlightProcess --> FlightProcess : Calculate position for current time step
+    FlightProcess --> MainProcess : Send position update for current time step
+    deactivate FlightProcess
+
+    MainProcess --> MainProcess : Collect updates for current time step
+    MainProcess --> MainProcess : Check if all expected updates were received
+
+    alt all expected updates received
+        MainProcess --> MainProcess : Process all updates for current time step
+        MainProcess --> MainProcess : Run time-step dependent checks
+        MainProcess --> MainProcess : Advance to next time step
+    else missing or invalid updates
+        MainProcess --> MainProcess : Handle synchronization issue safely
+        MainProcess --> MainProcess : Log warning/error
+    end
+end
+
+MainProcess --> Engine : Synchronized simulation completed
+
+deactivate MainProcess
+deactivate Engine
+
+@enduml

@@ -1,0 +1,153 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "MainSimulationProcess" as MainProcess
+participant "SimulationClock" as Clock
+participant "StepCoordinator" as Coordinator
+participant "FlightProcess" as FlightProcess
+participant "MovementPipeReader" as PipeReader
+participant "MovementMessageDecoder" as Decoder
+participant "PositionUpdateValidator" as Validator
+participant "StepUpdateBuffer" as Buffer
+participant "StepBarrier" as Barrier
+participant "SynchronizationIssueHandler" as IssueHandler
+participant "SimulationLogger" as Logger
+
+activate MainProcess
+
+MainProcess -> Clock : currentStep()
+
+activate Clock
+Clock --> MainProcess : currentStep
+deactivate Clock
+
+MainProcess -> Coordinator : determineExpectedProcesses(currentStep)
+
+activate Coordinator
+Coordinator --> MainProcess : expectedUpdateSet
+deactivate Coordinator
+
+loop while simulation is not finished
+
+    MainProcess -> FlightProcess : allow/trigger execution for currentStep
+
+    activate FlightProcess
+    FlightProcess --> FlightProcess : calculate position for currentStep
+    FlightProcess --> MainProcess : send position update through pipe
+    deactivate FlightProcess
+
+    loop until all expected updates are processed or issue occurs
+
+        MainProcess -> PipeReader : read()
+
+        activate PipeReader
+        PipeReader --> MainProcess : rawMessage / no data / read error
+        deactivate PipeReader
+
+        alt raw message received
+
+            MainProcess -> Decoder : decode(rawMessage)
+
+            activate Decoder
+            Decoder --> MainProcess : positionUpdate
+            deactivate Decoder
+
+            MainProcess -> Validator : validate(positionUpdate, currentStep, expectedUpdateSet)
+
+            activate Validator
+            Validator --> MainProcess : validationResult
+            deactivate Validator
+
+            alt update is valid for current step
+
+                MainProcess -> Buffer : add(positionUpdate)
+
+                activate Buffer
+                Buffer --> MainProcess : update stored
+                deactivate Buffer
+
+            else update is invalid, missing or out of order
+
+                MainProcess -> IssueHandler : handle(validation issue)
+
+                activate IssueHandler
+                IssueHandler -> Logger : logWarning(issue)
+
+                activate Logger
+                Logger --> IssueHandler : logged
+                deactivate Logger
+
+                IssueHandler --> MainProcess : issue handled
+                deactivate IssueHandler
+
+            end
+
+        else no data or read error
+
+            MainProcess -> IssueHandler : handle(pipe read issue)
+
+            activate IssueHandler
+            IssueHandler -> Logger : logWarning(issue)
+
+            activate Logger
+            Logger --> IssueHandler : logged
+            deactivate Logger
+
+            IssueHandler --> MainProcess : issue handled
+            deactivate IssueHandler
+
+        end
+
+        MainProcess -> Barrier : canAdvance(expectedUpdateSet, buffer)
+
+        activate Barrier
+        Barrier --> MainProcess : true/false
+        deactivate Barrier
+
+    end
+
+    alt all expected updates processed
+
+        MainProcess --> MainProcess : Process completed step updates
+        MainProcess --> MainProcess : Run time-step dependent checks
+
+        MainProcess -> Buffer : clear()
+
+        activate Buffer
+        Buffer --> MainProcess : buffer cleared
+        deactivate Buffer
+
+        MainProcess -> Clock : advance()
+
+        activate Clock
+        Clock --> MainProcess : nextStep
+        deactivate Clock
+
+        MainProcess -> Coordinator : determineExpectedProcesses(nextStep)
+
+        activate Coordinator
+        Coordinator --> MainProcess : expectedUpdateSet
+        deactivate Coordinator
+
+    else synchronization cannot continue safely
+
+        MainProcess -> Logger : logError("Synchronization failed")
+
+        activate Logger
+        Logger --> MainProcess : error logged
+        deactivate Logger
+
+        MainProcess --> MainProcess : Stop or mark simulation as failed
+
+    end
+
+end
+
+deactivate MainProcess
+
+@enduml
