@@ -1,0 +1,72 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Pilot {
+    licenseNumber
+    role
+}
+
+class AirTransportCompanyApp {
+    tcpClient
+}
+
+class EmbeddedServerApplication {
+    tcpServer
+}
+
+class TCPConnection {
+    host
+    port
+    status
+}
+
+class RemoteRequest {
+    operation
+    payload
+}
+
+class RemoteResponse {
+    status
+    payload
+    errorMessage
+}
+
+class AuthenticationService {
+}
+
+class AuthorizationService {
+}
+
+class ApplicationService {
+    useCase
+}
+
+class FlightPlanService {
+}
+
+class Database {
+}
+
+Pilot "1" -- "1" AirTransportCompanyApp : uses >
+AirTransportCompanyApp "1" -- "1" TCPConnection : opens >
+TCPConnection "1" -- "1" EmbeddedServerApplication : connects to >
+AirTransportCompanyApp "1" -- "*" RemoteRequest : sends >
+EmbeddedServerApplication "1" -- "*" RemoteRequest : receives >
+EmbeddedServerApplication "1" -- "*" RemoteResponse : returns >
+RemoteResponse "*" -- "1" AirTransportCompanyApp : displayed by >
+EmbeddedServerApplication "1" -- "1" AuthenticationService : authenticates through >
+EmbeddedServerApplication "1" -- "1" AuthorizationService : authorizes through >
+EmbeddedServerApplication "1" -- "*" ApplicationService : delegates to >
+ApplicationService <|-- FlightPlanService
+ApplicationService "*" -- "1" Database : accesses through repositories >
+AirTransportCompanyApp ..> Database : forbidden direct access
+
+@enduml

@@ -1,0 +1,66 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Pilot" as Pilot
+participant "Air Transport Company App" as ClientApp
+participant ":System" as System
+
+activate Pilot
+
+Pilot -> ClientApp : Opens remote app
+
+activate ClientApp
+ClientApp -> System : Establish TCP connection
+
+activate System
+System --> ClientApp : Connection accepted
+deactivate System
+
+ClientApp --> Pilot : Requests authentication data
+deactivate ClientApp
+
+Pilot -> ClientApp : Provides authentication data
+
+activate ClientApp
+ClientApp -> System : Sends authentication request through TCP
+
+activate System
+System --> System : Authenticate user
+System --> System : Authorize Pilot access
+
+alt authentication and authorization succeed
+    System --> ClientApp : Authentication successful
+    ClientApp --> Pilot : Display available Pilot operations
+
+    Pilot -> ClientApp : Selects remote Pilot operation
+    ClientApp -> System : Sends remote operation request through TCP
+
+    System --> System : Validate request
+    System --> System : Authorize selected Pilot operation
+    System --> System : Execute corresponding application service
+
+    alt remote operation succeeds
+        System --> ClientApp : Return success response
+        ClientApp --> Pilot : Display operation result
+    else remote operation fails
+        System --> ClientApp : Return error response
+        ClientApp --> Pilot : Display error message
+    end
+
+else authentication or authorization fails
+    System --> ClientApp : Access denied
+    ClientApp --> Pilot : Display access denied message
+end
+
+ClientApp -> System : Close TCP connection
+System --> ClientApp : Connection closed
+
+deactivate System
+deactivate ClientApp
+deactivate Pilot
+
+@enduml
