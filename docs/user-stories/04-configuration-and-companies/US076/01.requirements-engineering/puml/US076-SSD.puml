@@ -1,0 +1,40 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> System : Requests to list company pilot roster
+
+activate System
+System --> ATCC : Requests company identification
+deactivate System
+
+ATCC -> System : Provides company identification
+
+activate System
+System --> System : Check if collaborator is authorized
+System --> System : Validate air transport company
+System --> System : Check if collaborator belongs to company
+System --> System : Retrieve active pilots from company roster
+System --> System : Retrieve pilot system user information
+System --> System : Retrieve pilot aircraft model certifications
+
+alt active pilots exist
+    System --> ATCC : Display pilot roster
+else no active pilots exist
+    System --> ATCC : Display empty roster message
+else user is not authorized or company is invalid
+    System --> ATCC : Display error message
+end
+
+deactivate System
+deactivate ATCC
+
+@enduml

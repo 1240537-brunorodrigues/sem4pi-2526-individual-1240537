@@ -1,0 +1,178 @@
+@startuml
+title US076-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class ListPilotRosterUI {
+        - companyId: String
+        + requestData()
+        + displayPilotRoster(pilots: List<PilotDTO>)
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class ListPilotRosterController {
+        + listPilotRoster(request: ListPilotRosterRequest): List<PilotDTO>
+    }
+}
+
+package "application" #DDDDDD {
+    class ListPilotRosterService {
+        + listPilotRoster(request: ListPilotRosterRequest): List<PilotDTO>
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class ListPilotRosterRequest {
+        - companyId: String
+    }
+
+    class PilotDTO {
+        - name: String
+        - email: String
+        - phoneNumber: String
+        - licenseNumber: String
+        - active: boolean
+        - certifiedAircraftModels: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - roles: List<Role>
+        - enabled: boolean
+        + hasPermission(permission: Permission): boolean
+        + isEnabled(): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - pilots: List<Pilot>
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        - company: AirTransportCompany
+        - certifications: List<PilotCertification>
+        - active: boolean
+        + isActive(): boolean
+        + belongsTo(company: AirTransportCompany): boolean
+        + getCertifications(): List<PilotCertification>
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+    }
+
+    class PilotCertification {
+        - aircraftModel: AircraftModel
+        - certificationDate: LocalDate
+        - validUntil: LocalDate
+    }
+
+    class AircraftModel {
+        - id: String
+        - modelName: AircraftModelName
+        - manufacturer: Manufacturer
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class Manufacturer {
+        - name: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+
+    class PhoneNumber {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface PilotRepository {
+        + findActiveByCompany(company: AirTransportCompany): List<Pilot>
+    }
+}
+
+ListPilotRosterUI --> ListPilotRosterController : uses >
+ListPilotRosterController --> ListPilotRosterService : uses >
+ListPilotRosterService --> AuthorizationService : checks permission >
+ListPilotRosterService --> AirTransportCompanyRepository : retrieves company >
+ListPilotRosterService --> CustomerCollaboratorRepository : verifies collaborator company >
+ListPilotRosterService --> PilotRepository : retrieves active pilots >
+ListPilotRosterService --> PilotDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+User *-- PhoneNumber
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany "1" o-- "*" Pilot
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Pilot "1" --> "1" User
+Pilot *-- PilotLicenseNumber
+Pilot "*" --> "1" AirTransportCompany
+Pilot "1" o-- "1..*" PilotCertification
+PilotCertification "*" --> "1" AircraftModel
+
+AircraftModel *-- AircraftModelName
+AircraftModel "*" --> "1" Manufacturer
+
+@enduml

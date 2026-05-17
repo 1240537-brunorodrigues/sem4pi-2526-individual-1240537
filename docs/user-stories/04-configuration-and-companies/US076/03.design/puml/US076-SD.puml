@@ -1,0 +1,113 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "ListPilotRosterUI" as UI
+participant "ListPilotRosterController" as CTRL
+participant "ListPilotRosterService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "PilotRepository" as PilotRepo
+participant "PilotDTO" as PilotDTO
+
+activate ATCC
+
+ATCC -> UI : Requests to list company pilot roster
+
+activate UI
+UI --> ATCC : Requests company identification
+deactivate UI
+
+ATCC -> UI : Provides company identification
+
+activate UI
+UI -> CTRL : listPilotRoster(request)
+
+activate CTRL
+CTRL -> Service : listPilotRoster(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, LIST_PILOT_ROSTER)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> PilotRepo : findActiveByCompany(company)
+
+            activate PilotRepo
+            PilotRepo --> Service : List<Pilot>
+            deactivate PilotRepo
+
+            alt active pilots exist
+
+                loop for each active pilot
+                    Service -> PilotDTO ** : PilotDTO(pilot)
+                end
+
+                Service --> CTRL : List<PilotDTO>
+                CTRL --> UI : List<PilotDTO>
+                UI --> ATCC : Display pilot roster
+
+            else no active pilots exist
+
+                Service --> CTRL : Empty list
+                CTRL --> UI : Empty list
+                UI --> ATCC : Display empty roster message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Listing failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Listing failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

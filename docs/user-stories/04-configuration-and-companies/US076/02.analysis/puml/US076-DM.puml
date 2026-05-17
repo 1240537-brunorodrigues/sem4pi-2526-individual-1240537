@@ -1,0 +1,64 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class AirTransportCompanyCollaborator {
+    email
+    name
+    position
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class PilotRoster {
+    activePilots
+}
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class SystemUser {
+    email
+    name
+    phoneNumber
+    enabled
+}
+
+class PilotStatus {
+    active
+    inactive
+}
+
+class PilotCertification {
+    certificationDate
+    validUntil
+}
+
+class AircraftModel {
+    modelName
+    manufacturer
+}
+
+AirTransportCompanyCollaborator "*" -- "1" AirTransportCompany : belongs to >
+AirTransportCompany "1" -- "1" PilotRoster : has >
+PilotRoster "1" o-- "*" Pilot : contains >
+AirTransportCompany "1" -- "*" Pilot : has >
+Pilot "1" -- "1" SystemUser : is >
+Pilot "1" -- "1" PilotStatus : has >
+Pilot "1" -- "1..*" PilotCertification : holds >
+PilotCertification "*" -- "1" AircraftModel : certifies for >
+
+@enduml
