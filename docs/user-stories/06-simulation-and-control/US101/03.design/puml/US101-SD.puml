@@ -1,0 +1,114 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "FlightProcess" as FlightProcess
+participant "MovementMessage" as MovementMessage
+participant "MovementMessageEncoder" as Encoder
+participant "MovementPipeWriter" as PipeWriter
+participant "MainSimulationProcess" as MainProcess
+participant "MovementPipeReader" as PipeReader
+participant "MovementMessageDecoder" as Decoder
+participant "MovementMessageValidator" as Validator
+participant "AircraftPositionTracker" as Tracker
+participant "CurrentPositionMap" as CurrentMap
+participant "PositionHistory" as History
+participant "SimulationLogger" as Logger
+
+activate FlightProcess
+
+FlightProcess -> MovementMessage ** : MovementMessage(aircraftId, flightId,\ntimestamp, latitude, longitude,\naltitude, velocity)
+
+activate MovementMessage
+MovementMessage --> FlightProcess : movementMessage
+deactivate MovementMessage
+
+FlightProcess -> Encoder : encode(movementMessage)
+
+activate Encoder
+Encoder --> FlightProcess : rawMessage
+deactivate Encoder
+
+FlightProcess -> PipeWriter : write(rawMessage)
+
+activate PipeWriter
+PipeWriter --> FlightProcess : write result
+deactivate PipeWriter
+
+deactivate FlightProcess
+
+activate MainProcess
+
+MainProcess -> PipeReader : read()
+
+activate PipeReader
+PipeReader --> MainProcess : rawMessage
+deactivate PipeReader
+
+alt raw message was received
+
+    MainProcess -> Decoder : decode(rawMessage)
+
+    activate Decoder
+    Decoder --> MainProcess : movementMessage
+    deactivate Decoder
+
+    MainProcess -> Validator : validate(movementMessage)
+
+    activate Validator
+    Validator --> MainProcess : validationResult
+    deactivate Validator
+
+    alt movement message is valid
+
+        MainProcess -> Tracker : updateCurrentPosition(movementMessage)
+
+        activate Tracker
+        Tracker -> CurrentMap : put(aircraftId, aircraftPosition)
+
+        activate CurrentMap
+        CurrentMap --> Tracker : position updated
+        deactivate CurrentMap
+
+        Tracker --> MainProcess : current position updated
+        deactivate Tracker
+
+        MainProcess -> Tracker : storePastPosition(movementMessage)
+
+        activate Tracker
+        Tracker -> History : add(aircraftPosition)
+
+        activate History
+        History --> Tracker : position stored
+        deactivate History
+
+        Tracker --> MainProcess : position history updated
+        deactivate Tracker
+
+    else movement message is invalid
+
+        MainProcess -> Logger : logWarning(validationResult.errors)
+
+        activate Logger
+        Logger --> MainProcess : warning logged
+        deactivate Logger
+
+    end
+
+else no message was available or pipe read failed
+
+    MainProcess -> Logger : logWarning("No movement data or pipe read failure")
+
+    activate Logger
+    Logger --> MainProcess : warning logged
+    deactivate Logger
+
+end
+
+deactivate MainProcess
+
+@enduml

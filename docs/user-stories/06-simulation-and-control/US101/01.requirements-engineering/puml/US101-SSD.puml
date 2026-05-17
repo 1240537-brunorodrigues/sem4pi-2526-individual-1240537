@@ -1,0 +1,34 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Process" as FlightProcess
+participant ":Main Simulation Process" as MainProcess
+
+activate FlightProcess
+
+FlightProcess -> MainProcess : Send position update through pipe
+
+activate MainProcess
+MainProcess --> MainProcess : Read movement message from pipe
+MainProcess --> MainProcess : Validate movement message
+MainProcess --> MainProcess : Identify aircraft/flight
+MainProcess --> MainProcess : Extract timestamp and position data
+
+alt movement message is valid
+    MainProcess --> MainProcess : Update current aircraft position
+    MainProcess --> MainProcess : Store position in history
+    MainProcess --> FlightProcess : Acknowledge update, if required
+else movement message is invalid
+    MainProcess --> MainProcess : Reject movement message
+    MainProcess --> MainProcess : Log warning/error
+    MainProcess --> FlightProcess : Notify invalid update, if required
+end
+
+deactivate MainProcess
+deactivate FlightProcess
+
+@enduml

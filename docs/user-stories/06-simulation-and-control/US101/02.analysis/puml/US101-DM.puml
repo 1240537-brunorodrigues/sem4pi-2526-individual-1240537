@@ -1,0 +1,79 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class MainSimulationProcess {
+    processId
+    status
+}
+
+class FlightProcess {
+    processId
+    flightId
+    status
+}
+
+class Pipe {
+    readDescriptor
+    writeDescriptor
+}
+
+class MovementMessage {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+    velocityX
+    velocityY
+    velocityZ
+}
+
+class AircraftPosition {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+}
+
+class VelocityVector {
+    x
+    y
+    z
+}
+
+class CurrentPositionMap {
+    positionsByAircraft
+}
+
+class PositionHistory {
+    positions
+}
+
+class MovementValidationResult {
+    valid
+    errors
+}
+
+MainSimulationProcess "1" -- "1..*" FlightProcess : supervises >
+MainSimulationProcess "1" -- "1..*" Pipe : reads from >
+FlightProcess "*" -- "1" Pipe : writes to >
+FlightProcess "1" -- "*" MovementMessage : sends >
+MainSimulationProcess "1" -- "*" MovementMessage : receives >
+MovementMessage "1" -- "1" AircraftPosition : contains >
+MovementMessage "1" -- "0..1" VelocityVector : may include >
+MainSimulationProcess "1" -- "1" CurrentPositionMap : updates >
+MainSimulationProcess "1" -- "1" PositionHistory : stores >
+PositionHistory "1" o-- "*" AircraftPosition : contains >
+CurrentPositionMap "1" o-- "*" AircraftPosition : latest positions >
+MovementMessage "1" -- "1" MovementValidationResult : validated by >
+
+@enduml

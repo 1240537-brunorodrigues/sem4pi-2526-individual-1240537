@@ -1,0 +1,127 @@
+@startuml
+title US101-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.process" #DDDDDD {
+    class MainSimulationProcess {
+        - processId: int
+        - flightProcesses: List<FlightProcess>
+        - pipeReaders: List<MovementPipeReader>
+        + processMovementUpdates()
+    }
+
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        - pipeWriter: MovementPipeWriter
+        + executeFlightPlan()
+        + sendPositionUpdate(position: AircraftPosition)
+    }
+}
+
+package "c.simulation.ipc" #DDDDDD {
+    class MovementPipeWriter {
+        - writeDescriptor: int
+        + write(message: MovementMessage): int
+    }
+
+    class MovementPipeReader {
+        - readDescriptor: int
+        + read(): String
+    }
+
+    class MovementMessageEncoder {
+        + encode(message: MovementMessage): String
+    }
+
+    class MovementMessageDecoder {
+        + decode(rawMessage: String): MovementMessage
+    }
+}
+
+package "c.simulation.movement" #DDDDDD {
+    class MovementMessage {
+        - aircraftId: String
+        - flightId: String
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+        - velocityX: double
+        - velocityY: double
+        - velocityZ: double
+    }
+
+    class AircraftPosition {
+        - aircraftId: String
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+
+    class VelocityVector {
+        - x: double
+        - y: double
+        - z: double
+    }
+
+    class MovementMessageValidator {
+        + validate(message: MovementMessage): MovementValidationResult
+    }
+
+    class MovementValidationResult {
+        - valid: boolean
+        - errors: List<String>
+    }
+
+    class AircraftPositionTracker {
+        + updateCurrentPosition(position: AircraftPosition)
+        + storePastPosition(position: AircraftPosition)
+    }
+
+    class CurrentPositionMap {
+        + put(aircraftId: String, position: AircraftPosition)
+        + get(aircraftId: String): AircraftPosition
+    }
+
+    class PositionHistory {
+        + add(position: AircraftPosition)
+        + getByAircraft(aircraftId: String): List<AircraftPosition>
+        + getByTime(timestamp: long): List<AircraftPosition>
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+MainSimulationProcess "1" --> "1..*" FlightProcess : supervises >
+MainSimulationProcess "1" --> "1..*" MovementPipeReader : reads from >
+MainSimulationProcess --> MovementMessageDecoder : decodes >
+MainSimulationProcess --> MovementMessageValidator : validates >
+MainSimulationProcess --> AircraftPositionTracker : updates >
+MainSimulationProcess --> SimulationLogger : logs >
+
+FlightProcess --> MovementMessage : creates >
+FlightProcess --> MovementMessageEncoder : encodes >
+FlightProcess --> MovementPipeWriter : writes >
+
+MovementPipeWriter --> MovementMessageEncoder : uses >
+MovementPipeReader --> MovementMessageDecoder : uses >
+MovementMessage --> AircraftPosition : contains >
+MovementMessage --> VelocityVector : may include >
+MovementMessageValidator --> MovementValidationResult : returns >
+AircraftPositionTracker --> CurrentPositionMap : updates >
+AircraftPositionTracker --> PositionHistory : stores >
+PositionHistory "1" o-- "*" AircraftPosition
+CurrentPositionMap "1" o-- "*" AircraftPosition
+
+@enduml
