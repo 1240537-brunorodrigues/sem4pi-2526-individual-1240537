@@ -1,0 +1,265 @@
+@startuml
+title US080-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class CreateFlightPlanUI {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class CreateFlightPlanController {
+        + createFlightPlan(request: CreateFlightPlanRequest): FlightPlanDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class CreateFlightPlanService {
+        + createFlightPlan(request: CreateFlightPlanRequest): FlightPlanDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class CreateFlightPlanRequest {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+    }
+
+    class FlightPlanDTO {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+        - status: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - iataCode: AirlineIATACode
+    }
+
+    class FlightRoute {
+        - routeName: RouteName
+        - company: AirTransportCompany
+        - originAirport: Airport
+        - destinationAirport: Airport
+        - status: RouteStatus
+        - deactivationDate: LocalDate
+        + belongsTo(company: AirTransportCompany): boolean
+        + isActiveOn(dateTime: LocalDateTime): boolean
+    }
+
+    class Aircraft {
+        - registrationNumber: AircraftRegistrationNumber
+        - company: AirTransportCompany
+        - model: AircraftModel
+        - operationalStatus: OperationalStatus
+        + belongsTo(company: AirTransportCompany): boolean
+        + isOperational(): boolean
+    }
+
+    class AircraftModel {
+        - modelName: AircraftModelName
+        - maximumFuelCapacity: double
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        - company: AirTransportCompany
+        - certifications: List<PilotCertification>
+        - active: boolean
+        + belongsTo(company: AirTransportCompany): boolean
+        + isActive(): boolean
+        + isCertifiedFor(model: AircraftModel): boolean
+    }
+
+    class PilotCertification {
+        - aircraftModel: AircraftModel
+        - certificationDate: LocalDate
+        - validUntil: LocalDate
+    }
+
+    class FlightPlan {
+        - route: FlightRoute
+        - aircraft: Aircraft
+        - pilot: Pilot
+        - departureDateTime: DepartureDateTime
+        - fuelQuantity: FuelQuantity
+        - status: FlightPlanStatus
+        + FlightPlan(...)
+    }
+
+    class FlightPlanStatus {
+        - value: String
+        + draft(): FlightPlanStatus
+    }
+
+    class FuelQuantity {
+        - value: double
+        + FuelQuantity(value: double, maximumFuelCapacity: double)
+    }
+
+    class DepartureDateTime {
+        - value: LocalDateTime
+        + DepartureDateTime(value: LocalDateTime)
+    }
+
+    class FlightPlanCreationPolicy {
+        + canCreate(route: FlightRoute, aircraft: Aircraft, pilot: Pilot, departureDateTime: DepartureDateTime): boolean
+    }
+
+    class RouteName {
+        - value: String
+    }
+
+    class RouteStatus {
+        - value: String
+    }
+
+    class AircraftRegistrationNumber {
+        - value: String
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+    }
+
+    class OperationalStatus {
+        - value: String
+    }
+
+    class Airport {
+        - name: String
+        - iataCode: IATACode
+        - icaoCode: ICAOCode
+    }
+
+    class IATACode {
+        - value: String
+    }
+
+    class ICAOCode {
+        - value: String
+    }
+
+    class AirlineIATACode {
+        - value: String
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface FlightRouteRepository {
+        + findByName(routeName: RouteName): Optional<FlightRoute>
+    }
+
+    interface AircraftRepository {
+        + findByRegistrationNumber(registrationNumber: AircraftRegistrationNumber): Optional<Aircraft>
+    }
+
+    interface PilotRepository {
+        + findByLicenseNumber(licenseNumber: PilotLicenseNumber): Optional<Pilot>
+    }
+
+    interface FlightPlanRepository {
+        + existsForAircraftAt(aircraft: Aircraft, departureDateTime: DepartureDateTime): boolean
+        + existsForPilotAt(pilot: Pilot, departureDateTime: DepartureDateTime): boolean
+        + save(flightPlan: FlightPlan): void
+    }
+}
+
+CreateFlightPlanUI --> CreateFlightPlanController : uses >
+CreateFlightPlanController --> CreateFlightPlanService : uses >
+CreateFlightPlanService --> AuthorizationService : checks permission >
+CreateFlightPlanService --> FlightRouteRepository : retrieves route >
+CreateFlightPlanService --> AircraftRepository : retrieves aircraft >
+CreateFlightPlanService --> PilotRepository : retrieves pilot >
+CreateFlightPlanService --> FlightPlanRepository : checks/saves flight plan >
+CreateFlightPlanService --> FlightPlanCreationPolicy : validates creation >
+CreateFlightPlanService --> FlightPlanDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+FlightRoute "*" --> "1" AirTransportCompany
+Aircraft "*" --> "1" AirTransportCompany
+Pilot "*" --> "1" AirTransportCompany
+Pilot "1" --> "1" User
+
+FlightRoute *-- RouteName
+FlightRoute *-- RouteStatus
+FlightRoute "*" --> "1" Airport : origin
+FlightRoute "*" --> "1" Airport : destination
+
+Aircraft *-- AircraftRegistrationNumber
+Aircraft "*" --> "1" AircraftModel
+Aircraft *-- OperationalStatus
+
+Pilot *-- PilotLicenseNumber
+Pilot "1" o-- "1..*" PilotCertification
+PilotCertification "*" --> "1" AircraftModel
+
+FlightPlan "*" --> "1" FlightRoute
+FlightPlan "*" --> "1" Aircraft
+FlightPlan "*" --> "1" Pilot
+FlightPlan *-- DepartureDateTime
+FlightPlan *-- FuelQuantity
+FlightPlan *-- FlightPlanStatus
+
+AirTransportCompany *-- CompanyName
+AirTransportCompany *-- AirlineIATACode
+AircraftModel *-- AircraftModelName
+Airport *-- IATACode
+Airport *-- ICAOCode
+
+@enduml

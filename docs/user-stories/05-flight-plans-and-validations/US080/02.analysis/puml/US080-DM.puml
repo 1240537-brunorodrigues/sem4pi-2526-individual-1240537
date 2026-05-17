@@ -1,0 +1,91 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class SystemUser {
+    email
+    name
+    phoneNumber
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class FlightRoute {
+    routeName
+    status
+    deactivationDate
+}
+
+class Airport {
+    name
+    iataCode
+    icaoCode
+}
+
+class Aircraft {
+    registrationNumber
+    operationalStatus
+}
+
+class AircraftModel {
+    modelName
+    maximumFuelCapacity
+}
+
+class PilotCertification {
+    certificationDate
+    validUntil
+}
+
+class FlightPlan {
+    departureDateTime
+    fuelQuantity
+    status
+}
+
+class FlightPlanStatus {
+    draft
+    validated
+    rejected
+}
+
+class FuelQuantity {
+    value
+}
+
+Pilot "1" -- "1" SystemUser : is >
+Pilot "*" -- "1" AirTransportCompany : belongs to >
+AirTransportCompany "1" -- "*" FlightRoute : owns >
+AirTransportCompany "1" -- "*" Aircraft : owns >
+AirTransportCompany "1" -- "*" Pilot : has >
+
+FlightRoute "*" -- "1" Airport : origin >
+FlightRoute "*" -- "1" Airport : destination >
+
+Aircraft "*" -- "1" AircraftModel : is of >
+Pilot "1" -- "1..*" PilotCertification : holds >
+PilotCertification "*" -- "1" AircraftModel : certifies for >
+
+FlightPlan "*" -- "1" FlightRoute : planned for >
+FlightPlan "*" -- "1" Aircraft : uses >
+FlightPlan "*" -- "1" Pilot : assigned to >
+FlightPlan "1" -- "1" FlightPlanStatus : has >
+FlightPlan "1" -- "1" FuelQuantity : has >
+
+@enduml

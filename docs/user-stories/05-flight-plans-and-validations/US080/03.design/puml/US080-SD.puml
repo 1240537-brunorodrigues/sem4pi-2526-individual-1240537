@@ -1,0 +1,176 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Pilot" as PilotActor
+participant "CreateFlightPlanUI" as UI
+participant "CreateFlightPlanController" as CTRL
+participant "CreateFlightPlanService" as Service
+participant "AuthorizationService" as AuthzService
+participant "RouteName" as RouteName
+participant "FlightRouteRepository" as RouteRepo
+participant "AircraftRegistrationNumber" as AircraftRegistrationNumber
+participant "AircraftRepository" as AircraftRepo
+participant "PilotLicenseNumber" as PilotLicenseNumber
+participant "PilotRepository" as PilotRepo
+participant "DepartureDateTime" as DepartureDateTime
+participant "FuelQuantity" as FuelQuantity
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "FlightPlanCreationPolicy" as CreationPolicy
+participant "FlightPlan:\n flightPlan" as FlightPlan
+
+activate PilotActor
+
+PilotActor -> UI : Requests to create a flight plan
+
+activate UI
+UI --> PilotActor : Requests route, aircraft, pilot,\ndeparture date/time and fuel quantity
+deactivate UI
+
+PilotActor -> UI : Provides flight plan data
+
+activate UI
+UI -> CTRL : createFlightPlan(request)
+
+activate CTRL
+CTRL -> Service : createFlightPlan(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, CREATE_FLIGHT_PLAN)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt pilot is authorized
+
+    Service -> RouteName ** : RouteName(request.routeName)
+
+    activate RouteName
+    RouteName --> Service : routeName
+    deactivate RouteName
+
+    Service -> RouteRepo : findByName(routeName)
+
+    activate RouteRepo
+    RouteRepo --> Service : Optional<FlightRoute>
+    deactivate RouteRepo
+
+    alt route exists
+
+        Service -> AircraftRegistrationNumber ** : AircraftRegistrationNumber(request.aircraftRegistrationNumber)
+
+        activate AircraftRegistrationNumber
+        AircraftRegistrationNumber --> Service : registrationNumber
+        deactivate AircraftRegistrationNumber
+
+        Service -> AircraftRepo : findByRegistrationNumber(registrationNumber)
+
+        activate AircraftRepo
+        AircraftRepo --> Service : Optional<Aircraft>
+        deactivate AircraftRepo
+
+        Service -> PilotLicenseNumber ** : PilotLicenseNumber(request.pilotLicenseNumber)
+
+        activate PilotLicenseNumber
+        PilotLicenseNumber --> Service : licenseNumber
+        deactivate PilotLicenseNumber
+
+        Service -> PilotRepo : findByLicenseNumber(licenseNumber)
+
+        activate PilotRepo
+        PilotRepo --> Service : Optional<Pilot>
+        deactivate PilotRepo
+
+        alt aircraft and selected pilot exist
+
+            Service -> DepartureDateTime ** : DepartureDateTime(request.departureDateTime)
+
+            activate DepartureDateTime
+            DepartureDateTime --> Service : departureDateTime
+            deactivate DepartureDateTime
+
+            Service -> FuelQuantity ** : FuelQuantity(request.fuelQuantity, aircraft.model.maximumFuelCapacity)
+
+            activate FuelQuantity
+            FuelQuantity --> Service : fuelQuantity
+            deactivate FuelQuantity
+
+            Service -> FlightPlanRepo : existsForAircraftAt(aircraft, departureDateTime)
+
+            activate FlightPlanRepo
+            FlightPlanRepo --> Service : true/false
+            deactivate FlightPlanRepo
+
+            Service -> FlightPlanRepo : existsForPilotAt(selectedPilot, departureDateTime)
+
+            activate FlightPlanRepo
+            FlightPlanRepo --> Service : true/false
+            deactivate FlightPlanRepo
+
+            Service -> CreationPolicy : canCreate(route, aircraft, selectedPilot, departureDateTime)
+
+            activate CreationPolicy
+            CreationPolicy --> Service : true/false
+            deactivate CreationPolicy
+
+            alt flight plan can be created
+
+                Service -> FlightPlan ** : FlightPlan(route, aircraft, selectedPilot,\ndepartureDateTime, fuelQuantity, draft)
+
+                activate FlightPlan
+                FlightPlan --> Service : flightPlan
+                deactivate FlightPlan
+
+                Service -> FlightPlanRepo : save(flightPlan)
+
+                activate FlightPlanRepo
+                FlightPlanRepo --> Service : saved
+                deactivate FlightPlanRepo
+
+                Service --> CTRL : FlightPlanDTO
+                CTRL --> UI : Flight plan created successfully
+                UI --> PilotActor : Display success message
+
+            else flight plan violates business rules
+
+                Service --> CTRL : Creation failed
+                CTRL --> UI : Error
+                UI --> PilotActor : Display business rule error
+
+            end
+
+        else aircraft or selected pilot does not exist
+
+            Service --> CTRL : Creation failed
+            CTRL --> UI : Error
+            UI --> PilotActor : Display aircraft or pilot not found message
+
+        end
+
+    else route does not exist
+
+        Service --> CTRL : Creation failed
+        CTRL --> UI : Error
+        UI --> PilotActor : Display route not found message
+
+    end
+
+else pilot is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> PilotActor : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate PilotActor
+
+@enduml

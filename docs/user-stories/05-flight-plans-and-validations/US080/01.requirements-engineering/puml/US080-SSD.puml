@@ -1,0 +1,48 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Pilot" as Pilot
+participant ":System" as System
+
+activate Pilot
+
+Pilot -> System : Requests to create a flight plan
+
+activate System
+System --> Pilot : Requests route, aircraft, pilot,\ndeparture date/time and fuel quantity
+deactivate System
+
+Pilot -> System : Provides flight plan data
+
+activate System
+System --> System : Check if pilot is authenticated and authorized
+System --> System : Validate flight route
+System --> System : Check if route is active on departure date/time
+System --> System : Validate aircraft
+System --> System : Check if aircraft belongs to route's company
+System --> System : Check if aircraft is operational
+System --> System : Check aircraft availability
+System --> System : Validate selected pilot
+System --> System : Check if selected pilot belongs to route's company
+System --> System : Check if selected pilot is active
+System --> System : Check if selected pilot is certified for aircraft model
+System --> System : Check selected pilot availability
+System --> System : Validate departure date/time
+System --> System : Validate fuel quantity
+System --> System : Set flight plan status to draft
+
+alt flight plan data is valid
+    System --> System : Create flight plan
+    System --> Pilot : Flight plan created successfully
+else flight plan data is invalid
+    System --> Pilot : Display error message
+end
+
+deactivate System
+deactivate Pilot
+
+@enduml
