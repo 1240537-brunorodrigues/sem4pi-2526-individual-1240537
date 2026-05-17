@@ -1,0 +1,181 @@
+@startuml
+title US082-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class InsertWeatherDataInFlightUI {
+        - flightPlanId: String
+        - weatherDataId: String
+        - weatherDataInput: WeatherDataInputDTO
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class InsertWeatherDataInFlightController {
+        + insertWeatherData(request: InsertWeatherDataRequest): FlightPlanDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class InsertWeatherDataInFlightService {
+        + insertWeatherData(request: InsertWeatherDataRequest): FlightPlanDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class InsertWeatherDataRequest {
+        - flightPlanId: String
+        - weatherDataId: String
+        - weatherDataInput: WeatherDataInputDTO
+    }
+
+    class WeatherDataInputDTO {
+        - airControlAreaCode: String
+        - dateTime: LocalDateTime
+        - windSpeed: double
+        - windDirection: double
+        - temperature: double
+        - pressure: double
+        - visibility: double
+    }
+
+    class FlightPlanDTO {
+        - flightPlanId: String
+        - weatherDataIncluded: boolean
+        - testStatus: String
+        - status: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        - active: boolean
+    }
+
+    class FlightPlan {
+        - id: String
+        - pilot: Pilot
+        - weatherData: WeatherData
+        - tests: List<FlightPlanTest>
+        - testStatus: TestStatus
+        + belongsTo(pilot: Pilot): boolean
+        + addWeatherData(weatherData: WeatherData): void
+        + hasValidTest(): boolean
+        + voidPreviousTest(): void
+        + requiresNewTest(): void
+    }
+
+    class WeatherData {
+        - airControlArea: AirControlArea
+        - dateTime: LocalDateTime
+        - windSpeed: double
+        - windDirection: double
+        - temperature: double
+        - pressure: double
+        - visibility: double
+        + WeatherData(...)
+    }
+
+    class AirControlArea {
+        - code: AreaCode
+        - name: String
+    }
+
+    class FlightPlanTest {
+        - testedAt: LocalDateTime
+        - result: ValidationResult
+        - status: TestStatus
+        + markAsVoid(): void
+    }
+
+    class TestStatus {
+        - value: String
+    }
+
+    class ValidationResult {
+        - value: String
+    }
+
+    class FlightPlanWeatherUpdatePolicy {
+        + shouldVoidPreviousTest(flightPlan: FlightPlan): boolean
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+    }
+
+    class AreaCode {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface FlightPlanRepository {
+        + findById(flightPlanId: String): Optional<FlightPlan>
+        + save(flightPlan: FlightPlan): void
+    }
+
+    interface WeatherDataRepository {
+        + findById(weatherDataId: String): Optional<WeatherData>
+    }
+}
+
+InsertWeatherDataInFlightUI --> InsertWeatherDataInFlightController : uses >
+InsertWeatherDataInFlightController --> InsertWeatherDataInFlightService : uses >
+InsertWeatherDataInFlightService --> AuthorizationService : checks permission >
+InsertWeatherDataInFlightService --> FlightPlanRepository : retrieves/saves flight plan >
+InsertWeatherDataInFlightService --> WeatherDataRepository : retrieves weather data >
+InsertWeatherDataInFlightService --> WeatherData : creates if manually provided >
+InsertWeatherDataInFlightService --> FlightPlanWeatherUpdatePolicy : checks test invalidation >
+InsertWeatherDataInFlightService --> FlightPlanDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+Pilot "1" --> "1" User
+Pilot *-- PilotLicenseNumber
+
+FlightPlan "*" --> "1" Pilot
+FlightPlan "1" --> "0..1" WeatherData
+FlightPlan "1" o-- "0..*" FlightPlanTest
+FlightPlan *-- TestStatus
+
+WeatherData "*" --> "1" AirControlArea
+AirControlArea *-- AreaCode
+
+FlightPlanTest *-- TestStatus
+FlightPlanTest *-- ValidationResult
+
+@enduml

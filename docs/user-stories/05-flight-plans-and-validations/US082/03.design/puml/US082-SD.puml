@@ -1,0 +1,144 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Pilot" as PilotActor
+participant "InsertWeatherDataInFlightUI" as UI
+participant "InsertWeatherDataInFlightController" as CTRL
+participant "InsertWeatherDataInFlightService" as Service
+participant "AuthorizationService" as AuthzService
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "WeatherDataRepository" as WeatherRepo
+participant "WeatherData" as WeatherData
+participant "FlightPlanWeatherUpdatePolicy" as WeatherUpdatePolicy
+participant "FlightPlan:\n flightPlan" as FlightPlan
+
+activate PilotActor
+
+PilotActor -> UI : Requests to add weather data to flight plan
+
+activate UI
+UI --> PilotActor : Requests flight plan and weather data
+deactivate UI
+
+PilotActor -> UI : Provides flight plan and weather data
+
+activate UI
+UI -> CTRL : insertWeatherData(request)
+
+activate CTRL
+CTRL -> Service : insertWeatherData(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, INSERT_WEATHER_DATA_IN_FLIGHT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt pilot is authorized
+
+    Service -> FlightPlanRepo : findById(request.flightPlanId)
+
+    activate FlightPlanRepo
+    FlightPlanRepo --> Service : Optional<FlightPlan>
+    deactivate FlightPlanRepo
+
+    alt flight plan exists and belongs to pilot
+
+        alt weather data selected from repository
+
+            Service -> WeatherRepo : findById(request.weatherDataId)
+
+            activate WeatherRepo
+            WeatherRepo --> Service : Optional<WeatherData>
+            deactivate WeatherRepo
+
+        else weather data manually provided
+
+            Service -> WeatherData ** : WeatherData(request.weatherDataInput)
+
+            activate WeatherData
+            WeatherData --> Service : weatherData
+            deactivate WeatherData
+
+        end
+
+        alt weather data is valid
+
+            Service -> WeatherUpdatePolicy : shouldVoidPreviousTest(flightPlan)
+
+            activate WeatherUpdatePolicy
+            WeatherUpdatePolicy --> Service : true/false
+            deactivate WeatherUpdatePolicy
+
+            Service -> FlightPlan : addWeatherData(weatherData)
+
+            activate FlightPlan
+            FlightPlan --> Service : weather data added
+            deactivate FlightPlan
+
+            alt previous test should be voided
+
+                Service -> FlightPlan : voidPreviousTest()
+
+                activate FlightPlan
+                FlightPlan --> Service : previous test marked void
+                deactivate FlightPlan
+
+                Service -> FlightPlan : requiresNewTest()
+
+                activate FlightPlan
+                FlightPlan --> Service : new test required
+                deactivate FlightPlan
+
+            else flight plan was not previously tested
+
+                Service -> Service : No test invalidation needed
+
+            end
+
+            Service -> FlightPlanRepo : save(flightPlan)
+
+            activate FlightPlanRepo
+            FlightPlanRepo --> Service : saved
+            deactivate FlightPlanRepo
+
+            Service --> CTRL : FlightPlanDTO
+            CTRL --> UI : Weather data added successfully
+            UI --> PilotActor : Display success message
+
+        else weather data is invalid
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> PilotActor : Display weather data error
+
+        end
+
+    else flight plan does not exist or does not belong to pilot
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> PilotActor : Display flight plan not found message
+
+    end
+
+else pilot is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> PilotActor : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate PilotActor
+
+@enduml

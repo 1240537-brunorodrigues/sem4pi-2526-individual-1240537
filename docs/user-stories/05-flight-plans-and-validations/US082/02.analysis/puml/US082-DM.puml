@@ -1,0 +1,62 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class FlightPlan {
+    departureDateTime
+    fuelQuantity
+    status
+    testStatus
+}
+
+class WeatherData {
+    dateTime
+    windSpeed
+    windDirection
+    temperature
+    pressure
+    visibility
+}
+
+class AirControlArea {
+    code
+    name
+}
+
+class FlightPlanTest {
+    testedAt
+    result
+    status
+}
+
+class TestStatus {
+    notTested
+    valid
+    void
+}
+
+class ValidationResult {
+    result
+    message
+}
+
+Pilot "1" -- "*" FlightPlan : owns/creates >
+FlightPlan "1" -- "0..1" WeatherData : has >
+WeatherData "*" -- "1" AirControlArea : refers to >
+FlightPlan "1" -- "0..*" FlightPlanTest : has >
+FlightPlanTest "1" -- "1" TestStatus : has >
+FlightPlanTest "1" -- "1" ValidationResult : stores >
+
+@enduml

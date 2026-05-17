@@ -1,0 +1,46 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Pilot" as Pilot
+participant ":System" as System
+
+activate Pilot
+
+Pilot -> System : Requests to add weather data to a flight plan
+
+activate System
+System --> Pilot : Requests flight plan and weather data
+deactivate System
+
+Pilot -> System : Provides flight plan and weather data
+
+activate System
+System --> System : Check if pilot is authenticated and authorized
+System --> System : Validate flight plan
+System --> System : Check if flight plan belongs to pilot
+System --> System : Validate weather data
+System --> System : Check if flight plan was previously tested
+
+alt flight plan and weather data are valid
+    System --> System : Add weather data to flight plan
+
+    alt flight plan was previously tested
+        System --> System : Mark previous test result as void
+        System --> System : Mark flight plan as requiring new test
+    else flight plan was not previously tested
+        System --> System : Keep flight plan as not yet tested
+    end
+
+    System --> Pilot : Weather data added successfully
+else flight plan or weather data is invalid
+    System --> Pilot : Display error message
+end
+
+deactivate System
+deactivate Pilot
+
+@enduml
