@@ -1,0 +1,42 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Pilot" as Pilot
+participant ":System" as System
+
+activate Pilot
+
+Pilot -> System : Requests to create a flight plan from a file
+
+activate System
+System --> Pilot : Requests flight plan file and file format
+deactivate System
+
+Pilot -> System : Provides flight plan file
+
+activate System
+System --> System : Check if pilot is authenticated and authorized
+System --> System : Validate file existence and readability
+System --> System : Detect or validate file format
+System --> System : Perform lexical analysis
+System --> System : Perform syntactic analysis
+System --> System : Build internal flight plan representation
+System --> System : Perform semantic analysis
+System --> System : Validate extracted flight plan business rules
+System --> System : Set flight plan status to draft
+
+alt file and flight plan are valid
+    System --> System : Import and store flight plan
+    System --> Pilot : Flight plan imported successfully
+else file or flight plan is invalid
+    System --> Pilot : Display meaningful validation errors
+end
+
+deactivate System
+deactivate Pilot
+
+@enduml

@@ -1,0 +1,152 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Pilot" as Pilot
+participant "CreateFlightPlanFromFileUI" as UI
+participant "CreateFlightPlanFromFileController" as CTRL
+participant "CreateFlightPlanFromFileService" as Service
+participant "AuthorizationService" as AuthzService
+participant "FlightPlanFileReader" as FileReader
+participant "FlightPlanFormatDetector" as FormatDetector
+participant "CoreFlightDslLexer" as Lexer
+participant "CoreFlightDslParser" as Parser
+participant "FlightPlanAstMapper" as Mapper
+participant "CoreFlightDslSemanticValidator" as SemanticValidator
+participant "CreateFlightPlanService" as CreateFlightPlanService
+
+activate Pilot
+
+Pilot -> UI : Requests to create flight plan from file
+
+activate UI
+UI --> Pilot : Requests file path and file format
+deactivate UI
+
+Pilot -> UI : Provides flight plan file
+
+activate UI
+UI -> CTRL : createFlightPlanFromFile(request)
+
+activate CTRL
+CTRL -> Service : createFlightPlanFromFile(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, IMPORT_FLIGHT_PLAN)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt pilot is authorized
+
+    Service -> FileReader : read(request.filePath)
+
+    activate FileReader
+    FileReader --> Service : fileContent
+    deactivate FileReader
+
+    Service -> FormatDetector : isSupported(request.fileFormat)
+
+    activate FormatDetector
+    FormatDetector --> Service : true/false
+    deactivate FormatDetector
+
+    alt file exists, is readable and format is supported
+
+        Service -> Lexer : tokenize(fileContent)
+
+        activate Lexer
+        Lexer --> Service : TokenStream / lexical errors
+        deactivate Lexer
+
+        alt lexical analysis succeeds
+
+            Service -> Parser : parse(tokens)
+
+            activate Parser
+            Parser --> Service : ParseTree / syntactic errors
+            deactivate Parser
+
+            alt syntactic analysis succeeds
+
+                Service -> Mapper : map(parseTree)
+
+                activate Mapper
+                Mapper --> Service : FlightPlanDslModel
+                deactivate Mapper
+
+                Service -> SemanticValidator : validate(model)
+
+                activate SemanticValidator
+                SemanticValidator --> Service : List<ValidationError>
+                deactivate SemanticValidator
+
+                alt semantic analysis succeeds
+
+                    Service -> Mapper : toCreateFlightPlanRequest(model)
+
+                    activate Mapper
+                    Mapper --> Service : CreateFlightPlanRequest
+                    deactivate Mapper
+
+                    Service -> CreateFlightPlanService : createFlightPlan(createRequest)
+
+                    activate CreateFlightPlanService
+                    CreateFlightPlanService --> Service : FlightPlanDTO
+                    deactivate CreateFlightPlanService
+
+                    Service --> CTRL : FlightPlanImportDTO(success)
+                    CTRL --> UI : Import successful
+                    UI --> Pilot : Display imported flight plan
+
+                else semantic analysis fails
+
+                    Service --> CTRL : FlightPlanImportDTO(errors)
+                    CTRL --> UI : Import failed
+                    UI --> Pilot : Display semantic validation errors
+
+                end
+
+            else syntactic analysis fails
+
+                Service --> CTRL : FlightPlanImportDTO(errors)
+                CTRL --> UI : Import failed
+                UI --> Pilot : Display syntactic validation errors
+
+            end
+
+        else lexical analysis fails
+
+            Service --> CTRL : FlightPlanImportDTO(errors)
+            CTRL --> UI : Import failed
+            UI --> Pilot : Display lexical validation errors
+
+        end
+
+    else file is invalid or format unsupported
+
+        Service --> CTRL : Import failed
+        CTRL --> UI : Error
+        UI --> Pilot : Display file or format error
+
+    end
+
+else pilot is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> Pilot : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate Pilot
+
+@enduml

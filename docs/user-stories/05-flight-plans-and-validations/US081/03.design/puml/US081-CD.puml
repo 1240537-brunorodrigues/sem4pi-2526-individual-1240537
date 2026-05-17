@@ -1,0 +1,189 @@
+@startuml
+title US081-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class CreateFlightPlanFromFileUI {
+        - filePath: String
+        - fileFormat: String
+        + requestData()
+        + displayImportResult(result: FlightPlanImportDTO)
+        + displayValidationErrors(errors: List<ValidationErrorDTO>)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class CreateFlightPlanFromFileController {
+        + createFlightPlanFromFile(request: FlightPlanFileImportRequest): FlightPlanImportDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class CreateFlightPlanFromFileService {
+        + createFlightPlanFromFile(request: FlightPlanFileImportRequest): FlightPlanImportDTO
+    }
+
+    class CreateFlightPlanService {
+        + createFlightPlan(request: CreateFlightPlanRequest): FlightPlanDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class FlightPlanFileImportRequest {
+        - filePath: String
+        - fileFormat: String
+    }
+
+    class CreateFlightPlanRequest {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+    }
+
+    class FlightPlanImportDTO {
+        - success: boolean
+        - flightPlan: FlightPlanDTO
+        - errors: List<ValidationErrorDTO>
+    }
+
+    class FlightPlanDTO {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+        - status: String
+    }
+
+    class ValidationErrorDTO {
+        - type: String
+        - line: int
+        - column: int
+        - message: String
+    }
+}
+
+package "dsl" #DDDDDD {
+    class FlightPlanFileReader {
+        + read(filePath: String): String
+    }
+
+    class FlightPlanFormatDetector {
+        + isSupported(fileFormat: String): boolean
+        + detect(filePath: String): String
+    }
+
+    class CoreFlightDslLexer {
+        + tokenize(content: String): TokenStream
+    }
+
+    class CoreFlightDslParser {
+        + parse(tokens: TokenStream): ParseTree
+    }
+
+    class CoreFlightDslSemanticValidator {
+        + validate(model: FlightPlanDslModel): List<ValidationError>
+    }
+
+    class FlightPlanAstMapper {
+        + map(parseTree: ParseTree): FlightPlanDslModel
+        + toCreateFlightPlanRequest(model: FlightPlanDslModel): CreateFlightPlanRequest
+    }
+
+    class FlightPlanDslModel {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+    }
+
+    class TokenStream {
+    }
+
+    class ParseTree {
+    }
+
+    class ValidationError {
+        - type: ValidationErrorType
+        - line: int
+        - column: int
+        - message: String
+    }
+
+    class ValidationErrorType {
+        - value: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class FlightPlan {
+        - status: FlightPlanStatus
+    }
+
+    class FlightPlanStatus {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface FlightPlanRepository {
+        + save(flightPlan: FlightPlan): void
+    }
+}
+
+CreateFlightPlanFromFileUI --> CreateFlightPlanFromFileController : uses >
+CreateFlightPlanFromFileController --> CreateFlightPlanFromFileService : uses >
+CreateFlightPlanFromFileService --> AuthorizationService : checks permission >
+CreateFlightPlanFromFileService --> FlightPlanFileReader : reads file >
+CreateFlightPlanFromFileService --> FlightPlanFormatDetector : detects/validates format >
+CreateFlightPlanFromFileService --> CoreFlightDslLexer : lexical analysis >
+CreateFlightPlanFromFileService --> CoreFlightDslParser : syntactic analysis >
+CreateFlightPlanFromFileService --> FlightPlanAstMapper : maps AST/model >
+CreateFlightPlanFromFileService --> CoreFlightDslSemanticValidator : semantic analysis >
+CreateFlightPlanFromFileService --> CreateFlightPlanService : creates flight plan >
+CreateFlightPlanFromFileService --> FlightPlanImportDTO : returns >
+
+CoreFlightDslLexer --> TokenStream : creates >
+CoreFlightDslParser --> ParseTree : creates >
+FlightPlanAstMapper --> FlightPlanDslModel : creates >
+FlightPlanAstMapper --> CreateFlightPlanRequest : creates >
+CoreFlightDslSemanticValidator --> ValidationError : returns >
+ValidationError *-- ValidationErrorType
+
+CreateFlightPlanService --> FlightPlanRepository : saves >
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+FlightPlan *-- FlightPlanStatus
+
+@enduml

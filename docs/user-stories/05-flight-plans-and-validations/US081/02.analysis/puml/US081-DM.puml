@@ -1,0 +1,80 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class FlightPlanFile {
+    fileName
+    fileFormat
+    content
+}
+
+class CoreFlightDSL {
+    version
+}
+
+class LexicalAnalysis {
+    tokens
+    errors
+}
+
+class SyntacticAnalysis {
+    parseTree
+    errors
+}
+
+class SemanticAnalysis {
+    validationResult
+    errors
+}
+
+class InternalFlightRepresentation {
+    route
+    aircraft
+    pilot
+    departureDateTime
+    fuelQuantity
+}
+
+class FlightPlan {
+    departureDateTime
+    fuelQuantity
+    status
+}
+
+class FlightPlanStatus {
+    draft
+    validated
+    rejected
+}
+
+class ValidationError {
+    type
+    location
+    message
+}
+
+Pilot "1" -- "*" FlightPlanFile : imports >
+FlightPlanFile "1" -- "1" CoreFlightDSL : conforms to >
+FlightPlanFile "1" -- "1" LexicalAnalysis : checked by >
+LexicalAnalysis "1" -- "1" SyntacticAnalysis : feeds >
+SyntacticAnalysis "1" -- "1" SemanticAnalysis : feeds >
+SemanticAnalysis "1" -- "1" InternalFlightRepresentation : validates >
+InternalFlightRepresentation "1" -- "1" FlightPlan : creates >
+FlightPlan "1" -- "1" FlightPlanStatus : has >
+LexicalAnalysis "1" o-- "*" ValidationError : may produce >
+SyntacticAnalysis "1" o-- "*" ValidationError : may produce >
+SemanticAnalysis "1" o-- "*" ValidationError : may produce >
+
+@enduml
