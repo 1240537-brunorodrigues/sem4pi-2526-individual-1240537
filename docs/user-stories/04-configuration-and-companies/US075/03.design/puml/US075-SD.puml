@@ -1,0 +1,202 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "AddPilotUI" as UI
+participant "AddPilotController" as CTRL
+participant "AddPilotService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "Email" as Email
+participant "PhoneNumber" as PhoneNumber
+participant "PilotLicenseNumber" as LicenseNumber
+participant "UserRepository" as UserRepo
+participant "AircraftModelRepository" as AircraftModelRepo
+participant "PilotRepository" as PilotRepo
+participant "User:\n pilotUser" as User
+participant "Pilot:\n pilot" as Pilot
+participant "PilotCertification" as Certification
+
+activate ATCC
+
+ATCC -> UI : Requests to add a pilot to company
+
+activate UI
+UI --> ATCC : Requests company, pilot data and aircraft model certifications
+deactivate UI
+
+ATCC -> UI : Provides pilot data and certifications
+
+activate UI
+UI -> CTRL : addPilot(request)
+
+activate CTRL
+CTRL -> Service : addPilot(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, ADD_PILOT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> Email ** : Email(request.email)
+
+            activate Email
+            Email --> Service : email
+            deactivate Email
+
+            Service -> PhoneNumber ** : PhoneNumber(request.phoneNumber)
+
+            activate PhoneNumber
+            PhoneNumber --> Service : phoneNumber
+            deactivate PhoneNumber
+
+            Service -> LicenseNumber ** : PilotLicenseNumber(request.licenseNumber)
+
+            activate LicenseNumber
+            LicenseNumber --> Service : licenseNumber
+            deactivate LicenseNumber
+
+            Service -> UserRepo : existsByEmail(email)
+
+            activate UserRepo
+            UserRepo --> Service : true/false
+            deactivate UserRepo
+
+            Service -> PilotRepo : existsByLicenseNumber(licenseNumber)
+
+            activate PilotRepo
+            PilotRepo --> Service : true/false
+            deactivate PilotRepo
+
+            alt email and license number are unique
+
+                loop for each certified aircraft model id
+                    Service -> AircraftModelRepo : findById(aircraftModelId)
+
+                    activate AircraftModelRepo
+                    AircraftModelRepo --> Service : Optional<AircraftModel>
+                    deactivate AircraftModelRepo
+                end
+
+                alt all selected aircraft models exist and at least one certification was selected
+
+                    Service -> User ** : User(email, name, phoneNumber, pilotRole)
+
+                    activate User
+                    User --> Service : pilotUser
+                    deactivate User
+
+                    Service -> UserRepo : save(pilotUser)
+
+                    activate UserRepo
+                    UserRepo --> Service : saved
+                    deactivate UserRepo
+
+                    Service -> Pilot ** : Pilot(pilotUser, licenseNumber, company)
+
+                    activate Pilot
+                    Pilot --> Service : pilot
+                    deactivate Pilot
+
+                    loop for each aircraft model
+                        Service -> Certification ** : PilotCertification(aircraftModel)
+
+                        activate Certification
+                        Certification --> Service : certification
+                        deactivate Certification
+
+                        Service -> Pilot : addCertification(certification)
+
+                        activate Pilot
+                        Pilot --> Service : certification added
+                        deactivate Pilot
+                    end
+
+                    Service -> PilotRepo : save(pilot)
+
+                    activate PilotRepo
+                    PilotRepo --> Service : saved
+                    deactivate PilotRepo
+
+                    Service -> CompanyRepo : save(company)
+
+                    activate CompanyRepo
+                    CompanyRepo --> Service : saved
+                    deactivate CompanyRepo
+
+                    Service --> CTRL : PilotDTO
+                    CTRL --> UI : Pilot added successfully
+                    UI --> ATCC : Display success message
+
+                else missing or invalid aircraft model certification
+
+                    Service --> CTRL : Registration failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display aircraft model certification error
+
+                end
+
+            else email or license number already exists
+
+                Service --> CTRL : Registration failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display duplicated pilot data error
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Registration failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Registration failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml

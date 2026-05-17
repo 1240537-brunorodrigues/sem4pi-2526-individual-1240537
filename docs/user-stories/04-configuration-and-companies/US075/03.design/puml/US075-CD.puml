@@ -1,0 +1,206 @@
+@startuml
+title US075-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class AddPilotUI {
+        - companyId: String
+        - name: String
+        - email: String
+        - phoneNumber: String
+        - licenseNumber: String
+        - certifiedAircraftModelIds: List<String>
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class AddPilotController {
+        + addPilot(request: AddPilotRequest): PilotDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class AddPilotService {
+        + addPilot(request: AddPilotRequest): PilotDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class AddPilotRequest {
+        - companyId: String
+        - name: String
+        - email: String
+        - phoneNumber: String
+        - licenseNumber: String
+        - certifiedAircraftModelIds: List<String>
+    }
+
+    class PilotDTO {
+        - name: String
+        - email: String
+        - phoneNumber: String
+        - licenseNumber: String
+        - companyId: String
+        - active: boolean
+        - certifiedAircraftModels: List<String>
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - roles: List<Role>
+        - enabled: boolean
+        + enable(): void
+        + disable(): void
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - pilots: List<Pilot>
+        + addPilot(pilot: Pilot): void
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        - company: AirTransportCompany
+        - certifications: List<PilotCertification>
+        - active: boolean
+        + addCertification(certification: PilotCertification): void
+        + isActive(): boolean
+        + belongsTo(company: AirTransportCompany): boolean
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+        + PilotLicenseNumber(value: String)
+    }
+
+    class PilotCertification {
+        - aircraftModel: AircraftModel
+        - certificationDate: LocalDate
+        - validUntil: LocalDate
+    }
+
+    class AircraftModel {
+        - id: String
+        - modelName: AircraftModelName
+        - manufacturer: Manufacturer
+    }
+
+    class AircraftModelName {
+        - value: String
+    }
+
+    class Manufacturer {
+        - name: String
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+        + Email(value: String)
+    }
+
+    class PhoneNumber {
+        - value: String
+        + PhoneNumber(value: String)
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+        + save(company: AirTransportCompany): void
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface UserRepository {
+        + existsByEmail(email: Email): boolean
+        + save(user: User): void
+    }
+
+    interface AircraftModelRepository {
+        + findById(aircraftModelId: String): Optional<AircraftModel>
+    }
+
+    interface PilotRepository {
+        + existsByLicenseNumber(licenseNumber: PilotLicenseNumber): boolean
+        + save(pilot: Pilot): void
+    }
+}
+
+AddPilotUI --> AddPilotController : uses >
+AddPilotController --> AddPilotService : uses >
+AddPilotService --> AuthorizationService : checks permission >
+AddPilotService --> AirTransportCompanyRepository : retrieves/saves company >
+AddPilotService --> CustomerCollaboratorRepository : verifies collaborator company >
+AddPilotService --> UserRepository : checks/saves user >
+AddPilotService --> AircraftModelRepository : retrieves certifications >
+AddPilotService --> PilotRepository : checks/saves pilot >
+AddPilotService --> PilotDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+User *-- PhoneNumber
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany "1" o-- "*" Pilot
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Pilot "1" --> "1" User
+Pilot *-- PilotLicenseNumber
+Pilot "*" --> "1" AirTransportCompany
+Pilot "1" o-- "1..*" PilotCertification
+PilotCertification "*" --> "1" AircraftModel
+
+AircraftModel *-- AircraftModelName
+AircraftModel "*" --> "1" Manufacturer
+
+@enduml

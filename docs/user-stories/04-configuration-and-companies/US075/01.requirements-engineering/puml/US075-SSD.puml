@@ -1,0 +1,45 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> System : Requests to add a pilot to company
+
+activate System
+System --> ATCC : Requests company, pilot data and aircraft model certifications
+deactivate System
+
+ATCC -> System : Provides pilot data and certifications
+
+activate System
+System --> System : Check if collaborator is authorized
+System --> System : Validate air transport company
+System --> System : Check if collaborator belongs to company
+System --> System : Validate pilot required data
+System --> System : Validate email
+System --> System : Check if email already exists as a system user
+System --> System : Validate phone number
+System --> System : Validate license number
+System --> System : Check license number uniqueness
+System --> System : Validate aircraft model certifications
+System --> System : Register pilot as system user
+System --> System : Create pilot
+System --> System : Associate pilot with company
+
+alt pilot data is valid
+    System --> ATCC : Pilot added successfully
+else pilot data is invalid
+    System --> ATCC : Display error message
+end
+
+deactivate System
+deactivate ATCC
+
+@enduml
