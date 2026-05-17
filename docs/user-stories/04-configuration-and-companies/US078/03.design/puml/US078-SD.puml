@@ -1,0 +1,180 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "RemoteAccessClientUI" as UI
+participant "TcpClient" as TcpClient
+participant "RemoteProtocolCodec" as ClientCodec
+participant "EmbeddedTcpServer" as TcpServer
+participant "RemoteClientSession" as Session
+participant "RemoteProtocolCodec" as ServerCodec
+participant "RemoteRequestHandler" as Handler
+participant "AuthenticationService" as AuthService
+participant "AuthorizationService" as AuthzService
+participant "RemoteOperationRouter" as Router
+participant "ApplicationService" as AppService
+
+activate ATCC
+
+ATCC -> UI : Opens Air Transport Company App
+
+activate UI
+UI -> TcpClient : connect(host, port)
+
+activate TcpClient
+TcpClient -> TcpServer : Establish TCP connection
+
+activate TcpServer
+TcpServer -> Session ** : RemoteClientSession(connection)
+
+activate Session
+TcpServer --> TcpClient : Connection accepted
+deactivate TcpServer
+
+UI --> ATCC : Requests credentials
+deactivate UI
+
+ATCC -> UI : Provides credentials
+
+activate UI
+UI -> ClientCodec : encode(authentication request)
+
+activate ClientCodec
+ClientCodec --> UI : raw message
+deactivate ClientCodec
+
+UI -> TcpClient : send(raw authentication request)
+
+activate TcpClient
+TcpClient -> Session : TCP message
+
+activate Session
+Session -> ServerCodec : decodeRequest(raw message)
+
+activate ServerCodec
+ServerCodec --> Session : RemoteRequest
+deactivate ServerCodec
+
+Session -> Handler : handle(authentication request)
+
+activate Handler
+Handler -> AuthService : authenticate(credentials)
+
+activate AuthService
+AuthService --> Handler : AuthenticationToken / failure
+deactivate AuthService
+
+alt authentication succeeds
+
+    Handler --> Session : RemoteResponse(success, token)
+
+    Session -> ServerCodec : encode(response)
+
+    activate ServerCodec
+    ServerCodec --> Session : raw response
+    deactivate ServerCodec
+
+    Session --> TcpClient : TCP response
+
+    TcpClient -> ClientCodec : decodeResponse(raw response)
+
+    activate ClientCodec
+    ClientCodec --> TcpClient : RemoteResponse
+    deactivate ClientCodec
+
+    TcpClient --> UI : Authentication response
+    UI --> ATCC : Display available operations
+
+    ATCC -> UI : Selects operation and provides data
+
+    UI -> ClientCodec : encode(remote operation request)
+
+    activate ClientCodec
+    ClientCodec --> UI : raw message
+    deactivate ClientCodec
+
+    UI -> TcpClient : send(raw operation request)
+
+    TcpClient -> Session : TCP message
+
+    Session -> ServerCodec : decodeRequest(raw message)
+
+    activate ServerCodec
+    ServerCodec --> Session : RemoteRequest
+    deactivate ServerCodec
+
+    Session -> Handler : handle(operation request)
+
+    Handler -> AuthzService : isAuthorized(user, operationPermission)
+
+    activate AuthzService
+    AuthzService --> Handler : true/false
+    deactivate AuthzService
+
+    alt user is authorized for operation
+
+        Handler -> Router : route(operation request)
+
+        activate Router
+        Router -> AppService : execute(request payload)
+
+        activate AppService
+        AppService --> Router : result
+        deactivate AppService
+
+        Router --> Handler : RemoteResponse(success, result)
+        deactivate Router
+
+        Handler --> Session : RemoteResponse(success, result)
+
+        Session -> ServerCodec : encode(response)
+
+        activate ServerCodec
+        ServerCodec --> Session : raw response
+        deactivate ServerCodec
+
+        Session --> TcpClient : TCP response
+
+        TcpClient -> ClientCodec : decodeResponse(raw response)
+
+        activate ClientCodec
+        ClientCodec --> TcpClient : RemoteResponse
+        deactivate ClientCodec
+
+        TcpClient --> UI : Operation response
+        UI --> ATCC : Display operation result
+
+    else user is not authorized
+
+        Handler --> Session : RemoteResponse(error, access denied)
+        Session --> TcpClient : TCP response
+        TcpClient --> UI : Error response
+        UI --> ATCC : Display access denied message
+
+    end
+
+else authentication fails
+
+    Handler --> Session : RemoteResponse(error, invalid credentials)
+    Session --> TcpClient : TCP response
+    TcpClient --> UI : Authentication failed
+    UI --> ATCC : Display authentication error
+
+end
+
+UI -> TcpClient : close()
+TcpClient -> Session : Close TCP connection
+Session --> TcpClient : Connection closed
+
+deactivate Handler
+deactivate Session
+deactivate TcpClient
+deactivate UI
+deactivate ATCC
+
+@enduml

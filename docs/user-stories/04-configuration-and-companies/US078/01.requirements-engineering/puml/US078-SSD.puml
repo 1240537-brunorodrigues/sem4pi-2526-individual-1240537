@@ -1,0 +1,66 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "Air Transport Company App" as ClientApp
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> ClientApp : Opens remote app
+
+activate ClientApp
+ClientApp -> System : Establish TCP connection
+
+activate System
+System --> ClientApp : Connection accepted
+deactivate System
+
+ClientApp --> ATCC : Requests authentication data
+deactivate ClientApp
+
+ATCC -> ClientApp : Provides authentication data
+
+activate ClientApp
+ClientApp -> System : Sends authentication request through TCP
+
+activate System
+System --> System : Authenticate user
+System --> System : Authorize Air Transport Company Collaborator access
+
+alt authentication and authorization succeed
+    System --> ClientApp : Authentication successful
+    ClientApp --> ATCC : Display available remote operations
+
+    ATCC -> ClientApp : Selects remote operation
+    ClientApp -> System : Sends remote operation request through TCP
+
+    System --> System : Validate request
+    System --> System : Authorize selected operation
+    System --> System : Execute corresponding application service
+
+    alt remote operation succeeds
+        System --> ClientApp : Return success response
+        ClientApp --> ATCC : Display operation result
+    else remote operation fails
+        System --> ClientApp : Return error response
+        ClientApp --> ATCC : Display error message
+    end
+
+else authentication or authorization fails
+    System --> ClientApp : Access denied
+    ClientApp --> ATCC : Display access denied message
+end
+
+ClientApp -> System : Close TCP connection
+System --> ClientApp : Connection closed
+
+deactivate System
+deactivate ClientApp
+deactivate ATCC
+
+@enduml

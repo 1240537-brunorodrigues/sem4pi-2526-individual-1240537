@@ -1,0 +1,174 @@
+@startuml
+title US078-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.remote" #DDDDDD {
+    class AirTransportCompanyApp {
+        + start()
+    }
+
+    class RemoteAccessClientUI {
+        + requestCredentials()
+        + displayAvailableOperations()
+        + requestOperationData()
+        + displayResponse(response: RemoteResponse)
+        + displayError(message: String)
+    }
+}
+
+package "network.client" #DDDDDD {
+    class TcpClient {
+        - host: String
+        - port: int
+        + connect()
+        + send(request: RemoteRequest): RemoteResponse
+        + close()
+    }
+}
+
+package "network.protocol" #DDDDDD {
+    class RemoteRequest {
+        - operation: String
+        - authenticationToken: String
+        - payload: String
+    }
+
+    class RemoteResponse {
+        - success: boolean
+        - payload: String
+        - errorCode: String
+        - errorMessage: String
+    }
+
+    class RemoteProtocolCodec {
+        + encode(request: RemoteRequest): String
+        + decodeRequest(rawMessage: String): RemoteRequest
+        + encode(response: RemoteResponse): String
+        + decodeResponse(rawMessage: String): RemoteResponse
+    }
+}
+
+package "network.server" #DDDDDD {
+    class EmbeddedTcpServer {
+        - port: int
+        + start()
+        + stop()
+    }
+
+    class RemoteClientSession {
+        + handleConnection()
+        + close()
+    }
+
+    class RemoteRequestHandler {
+        + handle(request: RemoteRequest): RemoteResponse
+    }
+
+    class RemoteOperationRouter {
+        + route(request: RemoteRequest): RemoteResponse
+    }
+}
+
+package "application" #DDDDDD {
+    class AuthenticationService {
+        + authenticate(credentials: Credentials): AuthenticationToken
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class AddAircraftToCompanyFleetService {
+    }
+
+    class DecommissionAircraftService {
+    }
+
+    class ListCompanyFleetService {
+    }
+
+    class CreateFlightRouteService {
+    }
+
+    class DeleteFlightRouteService {
+    }
+
+    class AddPilotService {
+    }
+
+    class ListPilotRosterService {
+    }
+
+    class RemovePilotService {
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Credentials {
+        - email: String
+        - password: String
+    }
+
+    class AuthenticationToken {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface UserRepository {
+        + findByEmail(email: Email): Optional<User>
+    }
+}
+
+AirTransportCompanyApp --> RemoteAccessClientUI : uses >
+AirTransportCompanyApp --> TcpClient : uses >
+RemoteAccessClientUI --> RemoteRequest : creates >
+TcpClient --> RemoteProtocolCodec : encodes/decodes >
+TcpClient --> RemoteRequest : sends >
+TcpClient --> RemoteResponse : receives >
+
+EmbeddedTcpServer --> RemoteClientSession : creates >
+RemoteClientSession --> RemoteProtocolCodec : encodes/decodes >
+RemoteClientSession --> RemoteRequestHandler : delegates >
+RemoteRequestHandler --> AuthenticationService : authenticates >
+RemoteRequestHandler --> AuthorizationService : authorizes >
+RemoteRequestHandler --> RemoteOperationRouter : routes >
+RemoteOperationRouter --> AddAircraftToCompanyFleetService : delegates >
+RemoteOperationRouter --> DecommissionAircraftService : delegates >
+RemoteOperationRouter --> ListCompanyFleetService : delegates >
+RemoteOperationRouter --> CreateFlightRouteService : delegates >
+RemoteOperationRouter --> DeleteFlightRouteService : delegates >
+RemoteOperationRouter --> AddPilotService : delegates >
+RemoteOperationRouter --> ListPilotRosterService : delegates >
+RemoteOperationRouter --> RemovePilotService : delegates >
+
+AuthenticationService --> UserRepository : retrieves user >
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+@enduml
