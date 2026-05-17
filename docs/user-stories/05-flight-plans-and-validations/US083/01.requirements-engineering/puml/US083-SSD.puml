@@ -1,0 +1,38 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Project Manager" as PM
+participant ":System" as System
+
+activate PM
+
+PM -> System : Requests Core Flight DSL validation capability
+
+activate System
+System --> PM : Requests DSL file/content for validation
+deactivate System
+
+PM -> System : Provides DSL file/content
+
+activate System
+System --> System : Read DSL content
+System --> System : Perform lexical analysis
+System --> System : Perform syntactic analysis
+System --> System : Build parse tree or AST
+System --> System : Map AST to internal flight plan representation
+System --> System : Perform semantic analysis
+
+alt DSL content is valid
+    System --> PM : Return valid flight plan representation
+else DSL content is invalid
+    System --> PM : Return meaningful validation errors
+end
+
+deactivate System
+deactivate PM
+
+@enduml

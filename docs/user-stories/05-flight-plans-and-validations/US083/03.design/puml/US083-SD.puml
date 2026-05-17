@@ -1,0 +1,98 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Project Manager" as PM
+participant "CoreFlightDslValidatorUI" as UI
+participant "CoreFlightDslValidatorController" as CTRL
+participant "CoreFlightDslValidatorService" as Service
+participant "CoreFlightDslLexer" as Lexer
+participant "CoreFlightDslParser" as Parser
+participant "FlightPlanAstMapper" as Mapper
+participant "CoreFlightDslSemanticValidator" as SemanticValidator
+
+activate PM
+
+PM -> UI : Requests to validate Core Flight DSL content
+
+activate UI
+UI --> PM : Requests DSL file/content
+deactivate UI
+
+PM -> UI : Provides DSL file/content
+
+activate UI
+UI -> CTRL : validateDsl(request)
+
+activate CTRL
+CTRL -> Service : validateDsl(request)
+
+activate Service
+Service -> Lexer : tokenize(content)
+
+activate Lexer
+Lexer --> Service : LexerResult
+deactivate Lexer
+
+alt lexical analysis succeeds
+
+    Service -> Parser : parse(tokens)
+
+    activate Parser
+    Parser --> Service : ParserResult
+    deactivate Parser
+
+    alt syntactic analysis succeeds
+
+        Service -> Mapper : map(parseTree)
+
+        activate Mapper
+        Mapper --> Service : FlightPlanDslModel
+        deactivate Mapper
+
+        Service -> SemanticValidator : validate(model)
+
+        activate SemanticValidator
+        SemanticValidator --> Service : SemanticValidationResult
+        deactivate SemanticValidator
+
+        alt semantic analysis succeeds
+
+            Service --> CTRL : DslValidationResultDTO(valid, model)
+            CTRL --> UI : Validation successful
+            UI --> PM : Display valid DSL model
+
+        else semantic analysis fails
+
+            Service --> CTRL : DslValidationResultDTO(errors)
+            CTRL --> UI : Validation failed
+            UI --> PM : Display semantic errors
+
+        end
+
+    else syntactic analysis fails
+
+        Service --> CTRL : DslValidationResultDTO(errors)
+        CTRL --> UI : Validation failed
+        UI --> PM : Display syntactic errors
+
+    end
+
+else lexical analysis fails
+
+    Service --> CTRL : DslValidationResultDTO(errors)
+    CTRL --> UI : Validation failed
+    UI --> PM : Display lexical errors
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate PM
+
+@enduml

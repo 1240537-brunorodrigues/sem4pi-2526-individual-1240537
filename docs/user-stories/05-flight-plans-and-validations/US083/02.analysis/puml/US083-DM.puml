@@ -1,0 +1,90 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class CoreFlightDSL {
+    version
+    grammar
+}
+
+class DSLFile {
+    fileName
+    content
+}
+
+class Grammar {
+    rules
+}
+
+class Lexer {
+    tokenRules
+}
+
+class Token {
+    type
+    value
+    line
+    column
+}
+
+class Parser {
+    grammarRules
+}
+
+class ParseTree {
+    nodes
+}
+
+class FlightPlanAst {
+    routeName
+    aircraftRegistrationNumber
+    pilotLicenseNumber
+    departureDateTime
+    fuelQuantity
+}
+
+class SemanticValidator {
+    validationRules
+}
+
+class InternalFlightPlanRepresentation {
+    routeName
+    aircraftRegistrationNumber
+    pilotLicenseNumber
+    departureDateTime
+    fuelQuantity
+}
+
+class ValidationError {
+    type
+    line
+    column
+    message
+}
+
+class ValidationErrorType {
+    lexical
+    syntactic
+    semantic
+}
+
+CoreFlightDSL "1" -- "1" Grammar : defines >
+DSLFile "*" -- "1" CoreFlightDSL : conforms to >
+Lexer "1" -- "*" Token : produces >
+Parser "1" -- "1" ParseTree : produces >
+ParseTree "1" -- "1" FlightPlanAst : maps to >
+SemanticValidator "1" -- "1" InternalFlightPlanRepresentation : validates >
+FlightPlanAst "1" -- "1" InternalFlightPlanRepresentation : maps to >
+Lexer "1" o-- "*" ValidationError : may produce >
+Parser "1" o-- "*" ValidationError : may produce >
+SemanticValidator "1" o-- "*" ValidationError : may produce >
+ValidationError "*" -- "1" ValidationErrorType : has >
+
+@enduml

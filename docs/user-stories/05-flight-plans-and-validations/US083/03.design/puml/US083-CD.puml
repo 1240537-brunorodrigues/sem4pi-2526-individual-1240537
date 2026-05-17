@@ -1,0 +1,168 @@
+@startuml
+title US083-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class CoreFlightDslValidatorUI {
+        - filePath: String
+        + requestData()
+        + displayValidationResult(result: DslValidationResultDTO)
+        + displayValidationErrors(errors: List<ValidationErrorDTO>)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class CoreFlightDslValidatorController {
+        + validateDsl(request: DslValidationRequest): DslValidationResultDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class CoreFlightDslValidatorService {
+        + validateDsl(request: DslValidationRequest): DslValidationResultDTO
+    }
+
+    class DslValidationRequest {
+        - filePath: String
+        - content: String
+    }
+
+    class DslValidationResultDTO {
+        - valid: boolean
+        - model: FlightPlanDslModelDTO
+        - errors: List<ValidationErrorDTO>
+    }
+
+    class FlightPlanDslModelDTO {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: String
+        - fuelQuantity: double
+    }
+
+    class ValidationErrorDTO {
+        - type: String
+        - line: int
+        - column: int
+        - message: String
+    }
+}
+
+package "dsl" #DDDDDD {
+    class CoreFlightDslSpecification {
+        - version: String
+        - grammarDescription: String
+    }
+
+    class CoreFlightDslLexer {
+        + tokenize(content: String): LexerResult
+    }
+
+    class CoreFlightDslParser {
+        + parse(tokens: TokenStream): ParserResult
+    }
+
+    class FlightPlanAstMapper {
+        + map(parseTree: ParseTree): FlightPlanDslModel
+    }
+
+    class CoreFlightDslSemanticValidator {
+        + validate(model: FlightPlanDslModel): SemanticValidationResult
+    }
+
+    class LexerResult {
+        - tokens: TokenStream
+        - errors: List<ValidationError>
+        + hasErrors(): boolean
+    }
+
+    class ParserResult {
+        - parseTree: ParseTree
+        - errors: List<ValidationError>
+        + hasErrors(): boolean
+    }
+
+    class SemanticValidationResult {
+        - errors: List<ValidationError>
+        + hasErrors(): boolean
+    }
+
+    class TokenStream {
+        - tokens: List<Token>
+    }
+
+    class Token {
+        - type: TokenType
+        - value: String
+        - line: int
+        - column: int
+    }
+
+    class TokenType {
+        - name: String
+    }
+
+    class ParseTree {
+        - root: ParseNode
+    }
+
+    class ParseNode {
+        - name: String
+        - value: String
+    }
+
+    class FlightPlanDslModel {
+        - routeName: String
+        - aircraftRegistrationNumber: String
+        - pilotLicenseNumber: String
+        - departureDateTime: LocalDateTime
+        - fuelQuantity: double
+    }
+
+    class ValidationError {
+        - type: ValidationErrorType
+        - line: int
+        - column: int
+        - message: String
+    }
+
+    class ValidationErrorType {
+        - value: String
+    }
+}
+
+CoreFlightDslValidatorUI --> CoreFlightDslValidatorController : uses >
+CoreFlightDslValidatorController --> CoreFlightDslValidatorService : uses >
+CoreFlightDslValidatorService --> CoreFlightDslLexer : lexical analysis >
+CoreFlightDslValidatorService --> CoreFlightDslParser : syntactic analysis >
+CoreFlightDslValidatorService --> FlightPlanAstMapper : maps parse tree >
+CoreFlightDslValidatorService --> CoreFlightDslSemanticValidator : semantic analysis >
+CoreFlightDslValidatorService --> DslValidationResultDTO : returns >
+
+CoreFlightDslLexer --> LexerResult : returns >
+LexerResult --> TokenStream : contains >
+TokenStream "1" o-- "*" Token
+Token *-- TokenType
+
+CoreFlightDslParser --> ParserResult : returns >
+ParserResult --> ParseTree : contains >
+ParseTree "1" o-- "*" ParseNode
+
+FlightPlanAstMapper --> FlightPlanDslModel : creates >
+CoreFlightDslSemanticValidator --> SemanticValidationResult : returns >
+
+LexerResult "1" o-- "*" ValidationError
+ParserResult "1" o-- "*" ValidationError
+SemanticValidationResult "1" o-- "*" ValidationError
+ValidationError *-- ValidationErrorType
+
+CoreFlightDslSpecification ..> CoreFlightDslLexer : defines token rules >
+CoreFlightDslSpecification ..> CoreFlightDslParser : defines grammar rules >
+
+@enduml
