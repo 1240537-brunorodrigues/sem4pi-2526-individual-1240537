@@ -1,0 +1,211 @@
+@startuml
+title US085-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class TestFlightPlanUI {
+        - flightPlanId: String
+        + requestData()
+        + displayValidationResult(result: FlightPlanTestDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class TestFlightPlanController {
+        + testFlightPlan(request: TestFlightPlanRequest): FlightPlanTestDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class TestFlightPlanService {
+        + testFlightPlan(request: TestFlightPlanRequest): FlightPlanTestDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class CoreFlightDslValidatorService {
+        + validateDsl(request: DslValidationRequest): DslValidationResultDTO
+    }
+
+    class TestFlightPlanRequest {
+        - flightPlanId: String
+    }
+
+    class FlightPlanTestDTO {
+        - flightPlanId: String
+        - testedAt: LocalDateTime
+        - passed: boolean
+        - testStatus: String
+        - fuelValidationMessage: String
+        - altitudeValidationMessage: String
+        - details: String
+    }
+}
+
+package "integration.c" #DDDDDD {
+    class FlightTestInputMapper {
+        + map(flightPlan: FlightPlan): FlightTestInput
+    }
+
+    class CFlightTestRunner {
+        + execute(input: FlightTestInput): CFlightTestOutput
+    }
+
+    class FlightTestResultParser {
+        + parse(output: CFlightTestOutput): FlightTestResult
+    }
+
+    class FlightTestInput {
+        - routeData: String
+        - aircraftData: String
+        - fuelData: String
+        - altitudeData: String
+        - weatherData: String
+    }
+
+    class CFlightTestOutput {
+        - exitCode: int
+        - stdout: String
+        - stderr: String
+    }
+
+    class FlightTestResult {
+        - passed: boolean
+        - fuelResult: FuelValidationResult
+        - altitudeResult: AltitudeValidationResult
+        - message: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        + belongsToCurrentUser(user: User): boolean
+    }
+
+    class FlightPlan {
+        - id: String
+        - pilot: Pilot
+        - status: FlightPlanStatus
+        - testStatus: TestStatus
+        - tests: List<FlightPlanTest>
+        + belongsTo(pilot: Pilot): boolean
+        + addTestResult(test: FlightPlanTest): void
+        + markAsValidated(): void
+        + markAsFailedValidation(): void
+    }
+
+    class FlightPlanTest {
+        - testedAt: LocalDateTime
+        - result: ValidationResult
+        - status: TestStatus
+        - fuelValidationResult: FuelValidationResult
+        - altitudeValidationResult: AltitudeValidationResult
+        + FlightPlanTest(...)
+    }
+
+    class FuelValidationResult {
+        - initialFuel: double
+        - estimatedFinalFuel: double
+        - minimumRequiredFinalFuel: double
+        - passed: boolean
+    }
+
+    class AltitudeValidationResult {
+        - minimumAllowedAltitude: double
+        - minimumPlannedAltitude: double
+        - passed: boolean
+    }
+
+    class ValidationResult {
+        - passed: boolean
+        - message: String
+    }
+
+    class FlightPlanValidationPolicy {
+        + applyResult(flightPlan: FlightPlan, result: FlightTestResult): FlightPlanTest
+    }
+
+    class FlightPlanStatus {
+        - value: String
+    }
+
+    class TestStatus {
+        - value: String
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface FlightPlanRepository {
+        + findById(flightPlanId: String): Optional<FlightPlan>
+        + save(flightPlan: FlightPlan): void
+    }
+}
+
+TestFlightPlanUI --> TestFlightPlanController : uses >
+TestFlightPlanController --> TestFlightPlanService : uses >
+TestFlightPlanService --> AuthorizationService : checks permission >
+TestFlightPlanService --> FlightPlanRepository : retrieves/saves flight plan >
+TestFlightPlanService --> CoreFlightDslValidatorService : validates DSL >
+TestFlightPlanService --> FlightTestInputMapper : maps input >
+TestFlightPlanService --> CFlightTestRunner : executes C test >
+TestFlightPlanService --> FlightTestResultParser : parses result >
+TestFlightPlanService --> FlightPlanValidationPolicy : applies result >
+TestFlightPlanService --> FlightPlanTestDTO : returns >
+
+FlightTestInputMapper --> FlightTestInput : creates >
+CFlightTestRunner --> CFlightTestOutput : returns >
+FlightTestResultParser --> FlightTestResult : creates >
+FlightTestResult *-- FuelValidationResult
+FlightTestResult *-- AltitudeValidationResult
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+Pilot "1" --> "1" User
+Pilot *-- PilotLicenseNumber
+
+FlightPlan "*" --> "1" Pilot
+FlightPlan *-- FlightPlanStatus
+FlightPlan *-- TestStatus
+FlightPlan "1" o-- "*" FlightPlanTest
+
+FlightPlanTest *-- ValidationResult
+FlightPlanTest *-- TestStatus
+FlightPlanTest *-- FuelValidationResult
+FlightPlanTest *-- AltitudeValidationResult
+
+@enduml

@@ -1,0 +1,92 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class FlightPlan {
+    departureDateTime
+    fuelQuantity
+    status
+    testStatus
+}
+
+class FlightDslDescription {
+    content
+    version
+}
+
+class InternalFlightRepresentation {
+    route
+    aircraft
+    pilot
+    departureDateTime
+    fuelQuantity
+    path
+    altitudeProfile
+}
+
+class CTestComponent {
+    executablePath
+}
+
+class FlightPlanTest {
+    testedAt
+    result
+    details
+}
+
+class TestStatus {
+    notTested
+    passed
+    failed
+    void
+}
+
+class FuelValidationResult {
+    initialFuel
+    estimatedFinalFuel
+    minimumRequiredFinalFuel
+    passed
+}
+
+class AltitudeValidationResult {
+    minimumAllowedAltitude
+    minimumPlannedAltitude
+    passed
+}
+
+class ValidationResult {
+    passed
+    message
+}
+
+class WeatherData {
+    windSpeed
+    windDirection
+    temperature
+    pressure
+}
+
+Pilot "1" -- "*" FlightPlan : owns/creates >
+FlightPlan "1" -- "1" FlightDslDescription : described by >
+FlightDslDescription "1" -- "1" InternalFlightRepresentation : produces >
+FlightPlan "1" -- "0..*" FlightPlanTest : has >
+FlightPlanTest "1" -- "1" TestStatus : has >
+FlightPlanTest "1" -- "1" ValidationResult : stores >
+FlightPlanTest "1" -- "1" FuelValidationResult : includes >
+FlightPlanTest "1" -- "1" AltitudeValidationResult : includes >
+FlightPlan "1" -- "0..1" WeatherData : uses >
+CTestComponent "1" -- "*" FlightPlanTest : executes >
+
+@enduml

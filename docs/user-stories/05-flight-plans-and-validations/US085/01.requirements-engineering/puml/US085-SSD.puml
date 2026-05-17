@@ -1,0 +1,51 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Pilot" as Pilot
+participant ":System" as System
+participant "C Test Component" as CTest
+
+activate Pilot
+
+Pilot -> System : Requests to test/validate a flight plan
+
+activate System
+System --> Pilot : Requests flight plan identification
+deactivate System
+
+Pilot -> System : Provides flight plan identification
+
+activate System
+System --> System : Check if pilot is authenticated and authorized
+System --> System : Validate flight plan
+System --> System : Check if flight plan belongs to pilot
+System --> System : Validate DSL description/internal representation
+System --> System : Prepare test input
+System -> CTest : Execute flight plan test
+
+activate CTest
+CTest --> System : Return test result
+deactivate CTest
+
+System --> System : Interpret test result
+System --> System : Store validation/test result
+
+alt test passes
+    System --> System : Mark flight plan as tested/validated
+    System --> Pilot : Display successful validation result
+else test fails
+    System --> System : Mark flight plan as tested but failed
+    System --> Pilot : Display failed validation result
+else test cannot be executed
+    System --> System : Do not mark flight plan as validated
+    System --> Pilot : Display execution error
+end
+
+deactivate System
+deactivate Pilot
+
+@enduml

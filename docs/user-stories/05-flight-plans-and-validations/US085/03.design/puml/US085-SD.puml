@@ -1,0 +1,170 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Pilot" as PilotActor
+participant "TestFlightPlanUI" as UI
+participant "TestFlightPlanController" as CTRL
+participant "TestFlightPlanService" as Service
+participant "AuthorizationService" as AuthzService
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "CoreFlightDslValidatorService" as DslValidator
+participant "FlightTestInputMapper" as InputMapper
+participant "CFlightTestRunner" as CRunner
+participant "FlightTestResultParser" as ResultParser
+participant "FlightPlanValidationPolicy" as ValidationPolicy
+participant "FlightPlan:\n flightPlan" as FlightPlan
+
+activate PilotActor
+
+PilotActor -> UI : Requests to test/validate a flight plan
+
+activate UI
+UI --> PilotActor : Requests flight plan identification
+deactivate UI
+
+PilotActor -> UI : Provides flight plan identification
+
+activate UI
+UI -> CTRL : testFlightPlan(request)
+
+activate CTRL
+CTRL -> Service : testFlightPlan(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, TEST_FLIGHT_PLAN)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt pilot is authorized
+
+    Service -> FlightPlanRepo : findById(request.flightPlanId)
+
+    activate FlightPlanRepo
+    FlightPlanRepo --> Service : Optional<FlightPlan>
+    deactivate FlightPlanRepo
+
+    alt flight plan exists and belongs to pilot
+
+        Service -> DslValidator : validateDsl(flightPlan.dslDescription)
+
+        activate DslValidator
+        DslValidator --> Service : DslValidationResultDTO
+        deactivate DslValidator
+
+        alt DSL validation succeeds
+
+            Service -> InputMapper : map(flightPlan)
+
+            activate InputMapper
+            InputMapper --> Service : FlightTestInput
+            deactivate InputMapper
+
+            Service -> CRunner : execute(testInput)
+
+            activate CRunner
+            CRunner --> Service : CFlightTestOutput
+            deactivate CRunner
+
+            alt C test component executed
+
+                Service -> ResultParser : parse(cOutput)
+
+                activate ResultParser
+                ResultParser --> Service : FlightTestResult
+                deactivate ResultParser
+
+                Service -> ValidationPolicy : applyResult(flightPlan, testResult)
+
+                activate ValidationPolicy
+                ValidationPolicy --> Service : FlightPlanTest
+                deactivate ValidationPolicy
+
+                Service -> FlightPlan : addTestResult(flightPlanTest)
+
+                activate FlightPlan
+                FlightPlan --> Service : test result added
+                deactivate FlightPlan
+
+                alt test passed
+
+                    Service -> FlightPlan : markAsValidated()
+
+                    activate FlightPlan
+                    FlightPlan --> Service : flight plan validated
+                    deactivate FlightPlan
+
+                    Service -> FlightPlanRepo : save(flightPlan)
+
+                    activate FlightPlanRepo
+                    FlightPlanRepo --> Service : saved
+                    deactivate FlightPlanRepo
+
+                    Service --> CTRL : FlightPlanTestDTO(passed)
+                    CTRL --> UI : Validation completed
+                    UI --> PilotActor : Display passed validation result
+
+                else test failed
+
+                    Service -> FlightPlan : markAsFailedValidation()
+
+                    activate FlightPlan
+                    FlightPlan --> Service : flight plan marked as failed
+                    deactivate FlightPlan
+
+                    Service -> FlightPlanRepo : save(flightPlan)
+
+                    activate FlightPlanRepo
+                    FlightPlanRepo --> Service : saved
+                    deactivate FlightPlanRepo
+
+                    Service --> CTRL : FlightPlanTestDTO(failed)
+                    CTRL --> UI : Validation completed
+                    UI --> PilotActor : Display failed validation result
+
+                end
+
+            else C test component cannot be executed
+
+                Service --> CTRL : Test execution failed
+                CTRL --> UI : Error
+                UI --> PilotActor : Display C test execution error
+
+            end
+
+        else DSL validation fails
+
+            Service --> CTRL : Validation failed
+            CTRL --> UI : Error
+            UI --> PilotActor : Display DSL validation errors
+
+        end
+
+    else flight plan does not exist or does not belong to pilot
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> PilotActor : Display flight plan not found message
+
+    end
+
+else pilot is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> PilotActor : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate PilotActor
+
+@enduml
