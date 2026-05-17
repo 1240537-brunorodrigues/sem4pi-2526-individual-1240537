@@ -1,0 +1,153 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "SimulateFlightsInAreaUI" as UI
+participant "SimulateFlightsInAreaController" as CTRL
+participant "SimulateFlightsInAreaService" as Service
+participant "AuthorizationService" as AuthzService
+participant "SimulationParameterValidator" as Validator
+participant "GeographicAreaRepository" as AreaRepo
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "WeatherDataRepository" as WeatherRepo
+participant "SimulationInputMapper" as InputMapper
+participant "CSimulationRunner" as CRunner
+participant "C Simulation Component" as CSim
+participant "MainSimulationProcess" as MainProcess
+participant "FlightProcess" as FlightProcess
+participant "SimulationResultParser" as ResultParser
+
+activate FCO
+
+FCO -> UI : Requests to simulate flights in area
+
+activate UI
+UI --> FCO : Requests simulation parameters
+deactivate UI
+
+FCO -> UI : Provides area, time range,\nflights, weather, thresholds and settings
+
+activate UI
+UI -> CTRL : simulateFlights(request)
+
+activate CTRL
+CTRL -> Service : simulateFlights(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, SIMULATE_FLIGHTS)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt FCO is authorized
+
+    Service -> Validator : validate(request)
+
+    activate Validator
+    Validator --> Service : ValidationResult
+    deactivate Validator
+
+    alt parameters are valid
+
+        Service -> AreaRepo : findByCode(request.areaCode)
+
+        activate AreaRepo
+        AreaRepo --> Service : Optional<GeographicArea>
+        deactivate AreaRepo
+
+        Service -> FlightPlanRepo : findByIds(request.includedFlightPlanIds)
+
+        activate FlightPlanRepo
+        FlightPlanRepo --> Service : List<FlightPlan>
+        deactivate FlightPlanRepo
+
+        Service -> WeatherRepo : findByAreaAndTimeRange(area, start, end)
+
+        activate WeatherRepo
+        WeatherRepo --> Service : List<WeatherData>
+        deactivate WeatherRepo
+
+        alt area and flight plans are valid
+
+            Service -> InputMapper : map(request, flightPlans, area)
+
+            activate InputMapper
+            InputMapper --> Service : SimulationInput
+            deactivate InputMapper
+
+            Service -> CRunner : execute(simulationInput)
+
+            activate CRunner
+            CRunner -> CSim : Start C simulation component
+
+            activate CSim
+            CSim -> MainProcess : initialize()
+
+            activate MainProcess
+            MainProcess --> MainProcess : create pipes
+
+            loop for each flight plan
+                MainProcess -> FlightProcess : fork()
+
+                activate FlightProcess
+                FlightProcess --> FlightProcess : execute designated flight plan
+                FlightProcess --> MainProcess : send position updates through pipe
+                deactivate FlightProcess
+            end
+
+            MainProcess --> MainProcess : track aircraft positions over time
+            MainProcess --> CSim : simulation completed
+
+            deactivate MainProcess
+            CSim --> CRunner : CSimulationOutput
+            deactivate CSim
+
+            CRunner --> Service : CSimulationOutput
+            deactivate CRunner
+
+            Service -> ResultParser : parse(output)
+
+            activate ResultParser
+            ResultParser --> Service : SimulationResultDTO
+            deactivate ResultParser
+
+            Service --> CTRL : SimulationResultDTO
+            CTRL --> UI : Simulation result
+            UI --> FCO : Display simulation result
+
+        else area or flight plans are invalid
+
+            Service --> CTRL : Simulation failed
+            CTRL --> UI : Error
+            UI --> FCO : Display area or flight plan error
+
+        end
+
+    else parameters are invalid
+
+        Service --> CTRL : Validation failed
+        CTRL --> UI : Error
+        UI --> FCO : Display validation errors
+
+    end
+
+else FCO is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> FCO : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate FCO
+
+@enduml

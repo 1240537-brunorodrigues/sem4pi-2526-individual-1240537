@@ -1,0 +1,238 @@
+@startuml
+title US100-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class SimulateFlightsInAreaUI {
+        - areaCode: String
+        - startTime: LocalDateTime
+        - endTime: LocalDateTime
+        - includedFlightPlanIds: List<String>
+        - safetyThresholds: SafetyThresholdDTO
+        - performanceSettings: PerformanceSettingsDTO
+        + requestData()
+        + displaySimulationResult(result: SimulationResultDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class SimulateFlightsInAreaController {
+        + simulateFlights(request: SimulationRequest): SimulationResultDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class SimulateFlightsInAreaService {
+        + simulateFlights(request: SimulationRequest): SimulationResultDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class SimulationRequest {
+        - areaCode: String
+        - startTime: LocalDateTime
+        - endTime: LocalDateTime
+        - includedFlightPlanIds: List<String>
+        - safetyThresholds: SafetyThresholdDTO
+        - performanceSettings: PerformanceSettingsDTO
+    }
+
+    class SafetyThresholdDTO {
+        - minimumSeparation: double
+        - maxViolations: int
+    }
+
+    class PerformanceSettingsDTO {
+        - timeStep: int
+        - executionMode: String
+    }
+
+    class SimulationResultDTO {
+        - success: boolean
+        - totalFlights: int
+        - status: String
+        - message: String
+    }
+
+    class SimulationParameterValidator {
+        + validate(request: SimulationRequest): ValidationResult
+    }
+
+    class ValidationResult {
+        - valid: boolean
+        - errors: List<String>
+    }
+}
+
+package "integration.c" #DDDDDD {
+    class SimulationInputMapper {
+        + map(request: SimulationRequest, flightPlans: List<FlightPlan>, area: GeographicArea): SimulationInput
+    }
+
+    class CSimulationRunner {
+        + execute(input: SimulationInput): CSimulationOutput
+    }
+
+    class SimulationResultParser {
+        + parse(output: CSimulationOutput): SimulationResultDTO
+    }
+
+    class SimulationInput {
+        - areaData: String
+        - timeRangeData: String
+        - flightPlanData: String
+        - weatherData: String
+        - thresholdData: String
+        - performanceData: String
+    }
+
+    class CSimulationOutput {
+        - exitCode: int
+        - stdout: String
+        - stderr: String
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class FlightControlOperator {
+        - user: User
+    }
+
+    class GeographicArea {
+        - code: AreaCode
+        - boundaries: String
+    }
+
+    class FlightPlan {
+        - id: String
+        - status: FlightPlanStatus
+    }
+
+    class WeatherData {
+        - windSpeed: double
+        - windDirection: double
+        - temperature: double
+    }
+
+    class FlightPlanStatus {
+        - value: String
+    }
+
+    class AreaCode {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface GeographicAreaRepository {
+        + findByCode(areaCode: AreaCode): Optional<GeographicArea>
+    }
+
+    interface FlightPlanRepository {
+        + findByIds(ids: List<String>): List<FlightPlan>
+    }
+
+    interface WeatherDataRepository {
+        + findByAreaAndTimeRange(area: GeographicArea, start: LocalDateTime, end: LocalDateTime): List<WeatherData>
+    }
+}
+
+package "c.simulation" #DDDDDD {
+    class MainSimulationProcess {
+        - processId: int
+        + initialize()
+        + forkFlightProcesses()
+        + trackPositions()
+        + handleSignals()
+    }
+
+    class FlightProcess {
+        - processId: int
+        + executeFlightPlan()
+        + sendPositionUpdate()
+    }
+
+    class PipeChannel {
+        - readDescriptor: int
+        - writeDescriptor: int
+        + read()
+        + write()
+    }
+
+    class SignalHandler {
+        + handleSignal(signal: int)
+    }
+
+    class PositionHistory {
+        + addPosition(position: AircraftPosition)
+        + getPositions()
+    }
+
+    class AircraftPosition {
+        - aircraftId: String
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+}
+
+SimulateFlightsInAreaUI --> SimulateFlightsInAreaController : uses >
+SimulateFlightsInAreaController --> SimulateFlightsInAreaService : uses >
+SimulateFlightsInAreaService --> AuthorizationService : checks permission >
+SimulateFlightsInAreaService --> SimulationParameterValidator : validates >
+SimulateFlightsInAreaService --> GeographicAreaRepository : retrieves area >
+SimulateFlightsInAreaService --> FlightPlanRepository : retrieves flight plans >
+SimulateFlightsInAreaService --> WeatherDataRepository : retrieves weather >
+SimulateFlightsInAreaService --> SimulationInputMapper : maps input >
+SimulateFlightsInAreaService --> CSimulationRunner : executes C component >
+SimulateFlightsInAreaService --> SimulationResultParser : parses output >
+
+SimulationInputMapper --> SimulationInput : creates >
+CSimulationRunner --> CSimulationOutput : returns >
+SimulationResultParser --> SimulationResultDTO : creates >
+
+AuthorizationService --> User : checks >
+FlightControlOperator "1" --> "1" User
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+GeographicArea *-- AreaCode
+FlightPlan *-- FlightPlanStatus
+
+MainSimulationProcess "1" --> "1..*" FlightProcess : forks >
+MainSimulationProcess "1" --> "1..*" PipeChannel : manages >
+FlightProcess "*" --> "1" PipeChannel : communicates through >
+MainSimulationProcess --> SignalHandler : uses >
+FlightProcess --> SignalHandler : uses >
+MainSimulationProcess "1" --> "1" PositionHistory : maintains >
+PositionHistory "1" o-- "*" AircraftPosition
+
+@enduml

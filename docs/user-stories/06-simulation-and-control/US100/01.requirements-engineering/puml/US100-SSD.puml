@@ -1,0 +1,61 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":System" as System
+participant "C Simulation Component" as CSim
+participant "Flight Process" as FlightProcess
+
+activate FCO
+
+FCO -> System : Requests to simulate flights in an area
+
+activate System
+System --> FCO : Requests simulation parameters
+deactivate System
+
+FCO -> System : Provides area, time range,\nflights, weather, thresholds and settings
+
+activate System
+System --> System : Check if FCO is authenticated and authorized
+System --> System : Validate geographic area
+System --> System : Validate time range
+System --> System : Validate included flights
+System --> System : Validate weather conditions
+System --> System : Validate safety thresholds
+System --> System : Validate performance settings
+System --> System : Prepare simulation input
+
+alt simulation parameters are valid
+    System -> CSim : Start simulation
+
+    activate CSim
+    CSim --> CSim : Initialize main process
+    CSim --> CSim : Create pipes for flight processes
+
+    loop for each included flight
+        CSim -> FlightProcess : fork flight process
+        activate FlightProcess
+        FlightProcess --> FlightProcess : Execute designated flight plan
+        FlightProcess --> CSim : Send position data through pipe
+        deactivate FlightProcess
+    end
+
+    CSim --> CSim : Track aircraft positions over time
+    CSim --> System : Return simulation result
+    deactivate CSim
+
+    System --> FCO : Display simulation result
+
+else simulation parameters are invalid
+    System --> FCO : Display validation errors
+end
+
+deactivate System
+deactivate FCO
+
+@enduml

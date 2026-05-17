@@ -1,0 +1,98 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    name
+    role
+}
+
+class Simulation {
+    startTime
+    endTime
+    status
+}
+
+class GeographicArea {
+    code
+    boundaries
+}
+
+class FlightPlan {
+    identifier
+    status
+}
+
+class WeatherCondition {
+    windSpeed
+    windDirection
+    temperature
+}
+
+class SafetyThreshold {
+    minimumSeparation
+    maxViolations
+}
+
+class PerformanceSettings {
+    timeStep
+    executionMode
+}
+
+class MainSimulationProcess {
+    processId
+    status
+}
+
+class FlightProcess {
+    processId
+    flightPlan
+    status
+}
+
+class Pipe {
+    readDescriptor
+    writeDescriptor
+}
+
+class Signal {
+    type
+}
+
+class AircraftPosition {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+}
+
+class PositionHistory {
+    positions
+}
+
+FlightControlOperator "1" -- "*" Simulation : starts >
+Simulation "1" -- "1" GeographicArea : runs in >
+Simulation "1" -- "1..*" FlightPlan : includes >
+Simulation "1" -- "0..*" WeatherCondition : uses >
+Simulation "1" -- "1" SafetyThreshold : uses >
+Simulation "1" -- "1" PerformanceSettings : uses >
+Simulation "1" -- "1" MainSimulationProcess : controlled by >
+MainSimulationProcess "1" -- "1..*" FlightProcess : forks >
+MainSimulationProcess "1" -- "1..*" Pipe : communicates through >
+FlightProcess "*" -- "1" Pipe : sends through >
+MainSimulationProcess "1" -- "*" Signal : sends/receives >
+FlightProcess "*" -- "*" Signal : handles >
+FlightProcess "*" -- "1" FlightPlan : executes >
+MainSimulationProcess "1" -- "1" PositionHistory : maintains >
+PositionHistory "1" o-- "*" AircraftPosition : stores >
+
+@enduml
