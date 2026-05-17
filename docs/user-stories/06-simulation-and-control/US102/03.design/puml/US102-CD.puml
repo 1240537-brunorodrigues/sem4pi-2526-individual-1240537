@@ -1,0 +1,134 @@
+@startuml
+title US102-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.process" #DDDDDD {
+    class MainSimulationProcess {
+        - processId: int
+        - violationCount: int
+        + monitorSafetyViolations()
+        + incrementViolationCount()
+    }
+
+    class FlightProcess {
+        - processId: int
+        - aircraftId: String
+        - status: String
+        + configureSignalHandlers()
+        + notifyUser(message: String)
+        + cleanup()
+    }
+
+    class FlightProcessRegistry {
+        + getProcessId(aircraftId: String): int
+        + getProcessIds(aircraftIds: List<String>): List<int>
+    }
+}
+
+package "c.simulation.position" #DDDDDD {
+    class AircraftPositionTracker {
+        + getCurrentPositions(): List<AircraftPosition>
+        + getPositionHistory(): PositionHistory
+    }
+
+    class CurrentPositionMap {
+        + getAll(): List<AircraftPosition>
+        + get(aircraftId: String): AircraftPosition
+    }
+
+    class PositionHistory {
+        + getByAircraft(aircraftId: String): List<AircraftPosition>
+        + getRecentPositions(): List<AircraftPosition>
+    }
+
+    class AircraftPosition {
+        - aircraftId: String
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+}
+
+package "c.simulation.safety" #DDDDDD {
+    class SafetyViolationDetector {
+        + detect(currentPositions: List<AircraftPosition>, history: PositionHistory, threshold: SafetyThreshold): List<SafetyViolation>
+    }
+
+    class SafetyThreshold {
+        - minimumHorizontalSeparation: double
+        - minimumVerticalSeparation: double
+        - maximumViolationCount: int
+    }
+
+    class SafetyViolation {
+        - violationId: String
+        - timestamp: long
+        - involvedAircraftIds: List<String>
+        - severity: String
+        - description: String
+    }
+
+    class ViolationEventLog {
+        + add(violation: SafetyViolation)
+        + getAll(): List<SafetyViolation>
+    }
+
+    class SimulationTerminationPolicy {
+        + shouldTerminate(violationCount: int, threshold: SafetyThreshold): boolean
+    }
+}
+
+package "c.simulation.signal" #DDDDDD {
+    class SignalNotifier {
+        + sendViolationSignal(processId: int): boolean
+        + sendTerminationSignal(processId: int): boolean
+    }
+
+    class ViolationSignalHandler {
+        + handleSIGUSR1(signal: int)
+        + blockOtherSignals()
+    }
+
+    class TerminationSignalHandler {
+        + handleTermination(signal: int)
+        + cleanupAndExit()
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logViolation(violation: SafetyViolation)
+        + logSignalFailure(processId: int, signal: int)
+        + logTermination(reason: String)
+        + logWarning(message: String)
+    }
+}
+
+MainSimulationProcess --> AircraftPositionTracker : gets positions >
+MainSimulationProcess --> SafetyViolationDetector : detects >
+MainSimulationProcess --> ViolationEventLog : logs events >
+MainSimulationProcess --> FlightProcessRegistry : resolves process ids >
+MainSimulationProcess --> SignalNotifier : sends signals >
+MainSimulationProcess --> SimulationTerminationPolicy : checks threshold >
+MainSimulationProcess --> SimulationLogger : logs >
+
+AircraftPositionTracker --> CurrentPositionMap : reads >
+AircraftPositionTracker --> PositionHistory : reads >
+
+SafetyViolationDetector --> SafetyThreshold : uses >
+SafetyViolationDetector --> SafetyViolation : creates >
+SafetyViolation "*" --> "2..*" AircraftPosition : based on >
+
+ViolationEventLog "1" o-- "*" SafetyViolation
+
+FlightProcess --> ViolationSignalHandler : uses >
+FlightProcess --> TerminationSignalHandler : uses >
+
+SignalNotifier --> FlightProcessRegistry : targets >
+
+@enduml

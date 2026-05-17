@@ -1,0 +1,60 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Simulation System" as SimulationSystem
+participant ":Main Simulation Process" as MainProcess
+participant ":Flight Process A" as FlightProcessA
+participant ":Flight Process B" as FlightProcessB
+
+activate SimulationSystem
+
+SimulationSystem -> MainProcess : Continuously monitor aircraft positions
+
+activate MainProcess
+MainProcess --> MainProcess : Retrieve current aircraft positions
+MainProcess --> MainProcess : Compare aircraft positions
+MainProcess --> MainProcess : Check safety thresholds
+MainProcess --> MainProcess : Predict potential safety violations
+
+alt safety violation detected
+    MainProcess --> MainProcess : Create safety violation event
+    MainProcess --> MainProcess : Log safety violation event
+    MainProcess -> FlightProcessA : Send SIGUSR1
+    MainProcess -> FlightProcessB : Send SIGUSR1
+
+    activate FlightProcessA
+    FlightProcessA --> FlightProcessA : Block other signals while handling SIGUSR1
+    FlightProcessA --> FlightProcessA : Handle violation notification
+    FlightProcessA --> SimulationSystem : Notify system user with message
+    deactivate FlightProcessA
+
+    activate FlightProcessB
+    FlightProcessB --> FlightProcessB : Block other signals while handling SIGUSR1
+    FlightProcessB --> FlightProcessB : Handle violation notification
+    FlightProcessB --> SimulationSystem : Notify system user with message
+    deactivate FlightProcessB
+
+    MainProcess --> MainProcess : Increment violation count
+    MainProcess --> MainProcess : Check violation threshold
+
+    alt violation threshold exceeded
+        MainProcess -> FlightProcessA : Send termination signal
+        MainProcess -> FlightProcessB : Send termination signal
+        FlightProcessA --> FlightProcessA : Perform cleanup
+        FlightProcessB --> FlightProcessB : Perform cleanup
+    else violation threshold not exceeded
+        MainProcess --> MainProcess : Continue simulation
+    end
+
+else no safety violation detected
+    MainProcess --> MainProcess : Continue monitoring
+end
+
+deactivate MainProcess
+deactivate SimulationSystem
+
+@enduml

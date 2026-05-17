@@ -1,0 +1,91 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class MainSimulationProcess {
+    processId
+    status
+    violationCount
+}
+
+class FlightProcess {
+    processId
+    aircraftId
+    status
+}
+
+class AircraftPosition {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+}
+
+class PositionHistory {
+    positions
+}
+
+class CurrentPositionMap {
+    positionsByAircraft
+}
+
+class SafetyThreshold {
+    minimumHorizontalSeparation
+    minimumVerticalSeparation
+    maximumViolationCount
+}
+
+class SafetyViolation {
+    violationId
+    timestamp
+    severity
+    description
+}
+
+class ViolationEventLog {
+    events
+}
+
+class SignalNotification {
+    signalType
+    targetProcessId
+    delivered
+}
+
+class SignalHandler {
+    handledSignal
+    blocksOtherSignals
+}
+
+class TerminationRequest {
+    reason
+    timestamp
+}
+
+MainSimulationProcess "1" -- "1" CurrentPositionMap : reads >
+MainSimulationProcess "1" -- "1" PositionHistory : uses >
+MainSimulationProcess "1" -- "1" SafetyThreshold : applies >
+MainSimulationProcess "1" -- "0..*" SafetyViolation : detects >
+MainSimulationProcess "1" -- "1" ViolationEventLog : writes >
+MainSimulationProcess "1" -- "0..*" SignalNotification : sends >
+MainSimulationProcess "1" -- "0..1" TerminationRequest : may trigger >
+
+CurrentPositionMap "1" o-- "*" AircraftPosition : latest positions >
+PositionHistory "1" o-- "*" AircraftPosition : past positions >
+
+SafetyViolation "*" -- "2..*" FlightProcess : involves >
+SafetyViolation "*" -- "2..*" AircraftPosition : based on >
+
+FlightProcess "1" -- "1" SignalHandler : has >
+SignalNotification "*" -- "1" FlightProcess : targets >
+TerminationRequest "*" -- "*" FlightProcess : terminates >
+
+@enduml

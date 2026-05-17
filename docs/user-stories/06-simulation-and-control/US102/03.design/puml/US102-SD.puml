@@ -1,0 +1,146 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "MainSimulationProcess" as MainProcess
+participant "AircraftPositionTracker" as PositionTracker
+participant "SafetyViolationDetector" as Detector
+participant "ViolationEventLog" as EventLog
+participant "FlightProcessRegistry" as ProcessRegistry
+participant "SignalNotifier" as SignalNotifier
+participant "FlightProcess A" as FlightProcessA
+participant "FlightProcess B" as FlightProcessB
+participant "SimulationTerminationPolicy" as TerminationPolicy
+participant "SimulationLogger" as Logger
+
+activate MainProcess
+
+MainProcess -> PositionTracker : getCurrentPositions()
+
+activate PositionTracker
+PositionTracker --> MainProcess : currentPositions
+deactivate PositionTracker
+
+MainProcess -> PositionTracker : getPositionHistory()
+
+activate PositionTracker
+PositionTracker --> MainProcess : positionHistory
+deactivate PositionTracker
+
+MainProcess -> Detector : detect(currentPositions, positionHistory, safetyThreshold)
+
+activate Detector
+Detector --> MainProcess : List<SafetyViolation>
+deactivate Detector
+
+alt safety violations detected
+
+    loop for each safety violation
+
+        MainProcess -> EventLog : add(violation)
+
+        activate EventLog
+        EventLog --> MainProcess : violation logged
+        deactivate EventLog
+
+        MainProcess -> Logger : logViolation(violation)
+
+        activate Logger
+        Logger --> MainProcess : logged
+        deactivate Logger
+
+        MainProcess -> ProcessRegistry : getProcessIds(violation.involvedAircraftIds)
+
+        activate ProcessRegistry
+        ProcessRegistry --> MainProcess : involvedProcessIds
+        deactivate ProcessRegistry
+
+        loop for each involved flight process
+            MainProcess -> SignalNotifier : sendViolationSignal(processId)
+
+            activate SignalNotifier
+            SignalNotifier --> MainProcess : delivered/not delivered
+            deactivate SignalNotifier
+        end
+
+        MainProcess -> FlightProcessA : SIGUSR1
+
+        activate FlightProcessA
+        FlightProcessA --> FlightProcessA : Block other signals
+        FlightProcessA --> FlightProcessA : Handle violation signal
+        FlightProcessA --> FlightProcessA : Notify system user
+        deactivate FlightProcessA
+
+        MainProcess -> FlightProcessB : SIGUSR1
+
+        activate FlightProcessB
+        FlightProcessB --> FlightProcessB : Block other signals
+        FlightProcessB --> FlightProcessB : Handle violation signal
+        FlightProcessB --> FlightProcessB : Notify system user
+        deactivate FlightProcessB
+
+        MainProcess --> MainProcess : Increment violation count
+
+    end
+
+    MainProcess -> TerminationPolicy : shouldTerminate(violationCount, safetyThreshold)
+
+    activate TerminationPolicy
+    TerminationPolicy --> MainProcess : true/false
+    deactivate TerminationPolicy
+
+    alt violation threshold exceeded
+
+        MainProcess -> Logger : logTermination("Violation threshold exceeded")
+
+        activate Logger
+        Logger --> MainProcess : termination logged
+        deactivate Logger
+
+        MainProcess -> ProcessRegistry : getProcessIds(all active aircraft)
+
+        activate ProcessRegistry
+        ProcessRegistry --> MainProcess : activeProcessIds
+        deactivate ProcessRegistry
+
+        loop for each active flight process
+            MainProcess -> SignalNotifier : sendTerminationSignal(processId)
+
+            activate SignalNotifier
+            SignalNotifier --> MainProcess : delivered/not delivered
+            deactivate SignalNotifier
+        end
+
+        MainProcess -> FlightProcessA : termination signal
+
+        activate FlightProcessA
+        FlightProcessA --> FlightProcessA : Handle termination signal
+        FlightProcessA --> FlightProcessA : Perform cleanup
+        deactivate FlightProcessA
+
+        MainProcess -> FlightProcessB : termination signal
+
+        activate FlightProcessB
+        FlightProcessB --> FlightProcessB : Handle termination signal
+        FlightProcessB --> FlightProcessB : Perform cleanup
+        deactivate FlightProcessB
+
+    else violation threshold not exceeded
+
+        MainProcess --> MainProcess : Continue simulation
+
+    end
+
+else no safety violations detected
+
+    MainProcess --> MainProcess : Continue monitoring
+
+end
+
+deactivate MainProcess
+
+@enduml
