@@ -1,0 +1,40 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant ":System" as System
+
+activate ATCC
+
+ATCC -> System : Requests to remove a pilot from company roster
+
+activate System
+System --> ATCC : Requests company and pilot identification
+deactivate System
+
+ATCC -> System : Provides company and pilot identification
+
+activate System
+System --> System : Check if collaborator is authorized
+System --> System : Validate air transport company
+System --> System : Check if collaborator belongs to company
+System --> System : Validate pilot
+System --> System : Check if pilot belongs to company
+System --> System : Check if pilot is active
+System --> System : Check if pilot has assigned flight plans
+
+alt pilot can be made inactive
+    System --> System : Make pilot inactive
+    System --> ATCC : Pilot made inactive successfully
+else pilot cannot be made inactive
+    System --> ATCC : Display error message
+end
+
+deactivate System
+deactivate ATCC
+
+@enduml

@@ -1,0 +1,171 @@
+@startuml
+title US077-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class RemovePilotUI {
+        - companyId: String
+        - pilotLicenseNumber: String
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class RemovePilotController {
+        + removePilot(request: RemovePilotRequest): PilotDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class RemovePilotService {
+        + removePilot(request: RemovePilotRequest): PilotDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class RemovePilotRequest {
+        - companyId: String
+        - pilotLicenseNumber: String
+    }
+
+    class PilotDTO {
+        - name: String
+        - email: String
+        - phoneNumber: String
+        - licenseNumber: String
+        - companyId: String
+        - active: boolean
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - name: String
+        - phoneNumber: PhoneNumber
+        - roles: List<Role>
+        - enabled: boolean
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    abstract class Customer {
+        - id: String
+        - name: String
+    }
+
+    class AirTransportCompany {
+        - id: String
+        - companyName: CompanyName
+        - pilots: List<Pilot>
+    }
+
+    class CustomerCollaborator {
+        - customer: Customer
+        - user: User
+        - active: boolean
+        + belongsTo(customer: Customer): boolean
+    }
+
+    class Pilot {
+        - user: User
+        - licenseNumber: PilotLicenseNumber
+        - company: AirTransportCompany
+        - active: boolean
+        + makeInactive(): void
+        + isActive(): boolean
+        + belongsTo(company: AirTransportCompany): boolean
+    }
+
+    class PilotLicenseNumber {
+        - value: String
+        + PilotLicenseNumber(value: String)
+    }
+
+    class FlightPlan {
+        - flightNumber: String
+        - status: String
+        - pilot: Pilot
+    }
+
+    class PilotDeactivationPolicy {
+        + canDeactivate(pilot: Pilot, hasAssignedFlightPlans: boolean): boolean
+    }
+
+    class CompanyName {
+        - value: String
+    }
+
+    class Email {
+        - value: String
+    }
+
+    class PhoneNumber {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface AirTransportCompanyRepository {
+        + findById(companyId: String): Optional<AirTransportCompany>
+    }
+
+    interface CustomerCollaboratorRepository {
+        + findByUser(user: User): Optional<CustomerCollaborator>
+    }
+
+    interface PilotRepository {
+        + findByLicenseNumber(licenseNumber: PilotLicenseNumber): Optional<Pilot>
+        + save(pilot: Pilot): void
+    }
+
+    interface FlightPlanRepository {
+        + existsAssignedToPilot(pilot: Pilot): boolean
+    }
+}
+
+RemovePilotUI --> RemovePilotController : uses >
+RemovePilotController --> RemovePilotService : uses >
+RemovePilotService --> AuthorizationService : checks permission >
+RemovePilotService --> AirTransportCompanyRepository : retrieves company >
+RemovePilotService --> CustomerCollaboratorRepository : verifies collaborator company >
+RemovePilotService --> PilotRepository : retrieves/saves pilot >
+RemovePilotService --> FlightPlanRepository : checks assigned flight plans >
+RemovePilotService --> PilotDeactivationPolicy : validates deactivation >
+RemovePilotService --> PilotDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+User *-- PhoneNumber
+
+AirTransportCompany --|> Customer
+AirTransportCompany *-- CompanyName
+AirTransportCompany "1" o-- "*" Pilot
+
+CustomerCollaborator "*" --> "1" Customer
+CustomerCollaborator "1" --> "1" User
+
+Pilot "1" --> "1" User
+Pilot *-- PilotLicenseNumber
+Pilot "*" --> "1" AirTransportCompany
+FlightPlan "*" --> "1" Pilot
+
+@enduml

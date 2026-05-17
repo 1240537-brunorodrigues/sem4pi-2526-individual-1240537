@@ -1,0 +1,168 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Air Transport Company Collaborator" as ATCC
+participant "RemovePilotUI" as UI
+participant "RemovePilotController" as CTRL
+participant "RemovePilotService" as Service
+participant "AuthorizationService" as AuthzService
+participant "AirTransportCompanyRepository" as CompanyRepo
+participant "CustomerCollaboratorRepository" as CollaboratorRepo
+participant "PilotLicenseNumber" as LicenseNumber
+participant "PilotRepository" as PilotRepo
+participant "FlightPlanRepository" as FlightPlanRepo
+participant "PilotDeactivationPolicy" as DeactivationPolicy
+participant "Pilot:\n pilot" as Pilot
+
+activate ATCC
+
+ATCC -> UI : Requests to remove a pilot from roster
+
+activate UI
+UI --> ATCC : Requests company and pilot identification
+deactivate UI
+
+ATCC -> UI : Provides company and pilot identification
+
+activate UI
+UI -> CTRL : removePilot(request)
+
+activate CTRL
+CTRL -> Service : removePilot(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, REMOVE_PILOT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt collaborator is authorized
+
+    Service -> CompanyRepo : findById(request.companyId)
+
+    activate CompanyRepo
+    CompanyRepo --> Service : Optional<AirTransportCompany>
+    deactivate CompanyRepo
+
+    alt company exists
+
+        Service -> CollaboratorRepo : findByUser(currentUser)
+
+        activate CollaboratorRepo
+        CollaboratorRepo --> Service : Optional<CustomerCollaborator>
+        deactivate CollaboratorRepo
+
+        alt collaborator belongs to company
+
+            Service -> LicenseNumber ** : PilotLicenseNumber(request.pilotLicenseNumber)
+
+            activate LicenseNumber
+            LicenseNumber --> Service : licenseNumber
+            deactivate LicenseNumber
+
+            Service -> PilotRepo : findByLicenseNumber(licenseNumber)
+
+            activate PilotRepo
+            PilotRepo --> Service : Optional<Pilot>
+            deactivate PilotRepo
+
+            alt pilot exists and belongs to company
+
+                Service -> Pilot : isActive()
+
+                activate Pilot
+                Pilot --> Service : true/false
+                deactivate Pilot
+
+                alt pilot is active
+
+                    Service -> FlightPlanRepo : existsAssignedToPilot(pilot)
+
+                    activate FlightPlanRepo
+                    FlightPlanRepo --> Service : true/false
+                    deactivate FlightPlanRepo
+
+                    Service -> DeactivationPolicy : canDeactivate(pilot, hasAssignedFlightPlans)
+
+                    activate DeactivationPolicy
+                    DeactivationPolicy --> Service : true/false
+                    deactivate DeactivationPolicy
+
+                    alt pilot can be made inactive
+
+                        Service -> Pilot : makeInactive()
+
+                        activate Pilot
+                        Pilot --> Service : pilot inactive
+                        deactivate Pilot
+
+                        Service -> PilotRepo : save(pilot)
+
+                        activate PilotRepo
+                        PilotRepo --> Service : saved
+                        deactivate PilotRepo
+
+                        Service --> CTRL : PilotDTO
+                        CTRL --> UI : Pilot made inactive successfully
+                        UI --> ATCC : Display success message
+
+                    else pilot has assigned flight plans
+
+                        Service --> CTRL : Operation failed
+                        CTRL --> UI : Error
+                        UI --> ATCC : Display assigned flight plans error
+
+                    end
+
+                else pilot is already inactive
+
+                    Service --> CTRL : Operation failed
+                    CTRL --> UI : Error
+                    UI --> ATCC : Display pilot already inactive message
+
+                end
+
+            else pilot does not exist or does not belong to company
+
+                Service --> CTRL : Operation failed
+                CTRL --> UI : Error
+                UI --> ATCC : Display pilot not found message
+
+            end
+
+        else collaborator does not belong to company
+
+            Service --> CTRL : Operation failed
+            CTRL --> UI : Error
+            UI --> ATCC : Display collaborator not associated with company message
+
+        end
+
+    else company does not exist
+
+        Service --> CTRL : Operation failed
+        CTRL --> UI : Error
+        UI --> ATCC : Display company not found message
+
+    end
+
+else collaborator is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> ATCC : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate ATCC
+
+@enduml
