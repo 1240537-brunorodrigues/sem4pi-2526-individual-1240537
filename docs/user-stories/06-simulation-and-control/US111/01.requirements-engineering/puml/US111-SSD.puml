@@ -1,0 +1,82 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":System" as System
+participant ":Report Generation Thread" as ReportThread
+participant ":Shared Memory" as SharedMemory
+participant ":Final Simulation Report" as FinalReport
+
+activate FCO
+
+FCO -> System : Requests final simulation report
+
+activate System
+System --> System : Check if FCO is authenticated and authorized
+System --> System : Validate selected simulation
+System --> System : Check if simulation is in a final state
+
+alt simulation is finished, failed or terminated
+
+    System -> ReportThread : Request final report generation
+
+    activate ReportThread
+
+    ReportThread -> SharedMemory : Read final simulation metadata and configuration
+    activate SharedMemory
+    SharedMemory --> ReportThread : Final metadata and configuration
+    deactivate SharedMemory
+
+    ReportThread -> SharedMemory : Read final flight process statuses
+    activate SharedMemory
+    SharedMemory --> ReportThread : Final process statuses
+    deactivate SharedMemory
+
+    ReportThread -> SharedMemory : Read complete aircraft position history
+    activate SharedMemory
+    SharedMemory --> ReportThread : Complete position history
+    deactivate SharedMemory
+
+    ReportThread -> SharedMemory : Read safety violation events
+    activate SharedMemory
+    SharedMemory --> ReportThread : Safety violation events
+    deactivate SharedMemory
+
+    ReportThread -> SharedMemory : Read environmental influence data
+    activate SharedMemory
+    SharedMemory --> ReportThread : Environmental influence data
+    deactivate SharedMemory
+
+    ReportThread -> SharedMemory : Read warnings and errors
+    activate SharedMemory
+    SharedMemory --> ReportThread : Warnings and errors
+    deactivate SharedMemory
+
+    ReportThread -> FinalReport : Compile final simulation report
+    activate FinalReport
+    FinalReport --> ReportThread : Final report compiled
+    deactivate FinalReport
+
+    ReportThread --> System : Final simulation report
+    deactivate ReportThread
+
+    System --> FCO : Display final simulation report
+
+else simulation is still running
+
+    System --> FCO : Display report unavailable until simulation ends
+
+else simulation does not exist or cannot be reported
+
+    System --> FCO : Display final report generation error
+
+end
+
+deactivate System
+deactivate FCO
+
+@enduml

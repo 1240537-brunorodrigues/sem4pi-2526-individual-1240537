@@ -1,0 +1,230 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "GenerateFinalSimulationReportUI" as UI
+participant "GenerateFinalSimulationReportController" as CTRL
+participant "GenerateFinalSimulationReportService" as Service
+participant "AuthorizationService" as AuthzService
+participant "SimulationRepository" as SimulationRepo
+participant "FinalSimulationStatePolicy" as FinalStatePolicy
+participant "CFinalReportGenerationRunner" as CRunner
+participant "ReportGenerationThread" as ReportThread
+participant "SharedMemoryAccessor" as SharedAccessor
+participant "FinalReportDataBuilder" as ReportBuilder
+participant "FinalSimulationReportFormatter" as Formatter
+participant "FinalSimulationReportOutputParser" as Parser
+
+activate FCO
+
+FCO -> UI : Requests final simulation report
+
+activate UI
+UI --> FCO : Requests simulation identification
+deactivate UI
+
+FCO -> UI : Provides simulation identification
+
+activate UI
+UI -> CTRL : generateFinalReport(request)
+
+activate CTRL
+CTRL -> Service : generateFinalReport(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, GENERATE_FINAL_SIMULATION_REPORT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt FCO is authorized
+
+    Service -> SimulationRepo : findById(request.simulationId)
+
+    activate SimulationRepo
+    SimulationRepo --> Service : Optional<Simulation>
+    deactivate SimulationRepo
+
+    alt simulation exists
+
+        Service -> FinalStatePolicy : canGenerateFinalReport(simulation)
+
+        activate FinalStatePolicy
+        FinalStatePolicy --> Service : true/false
+        deactivate FinalStatePolicy
+
+        alt simulation is in a final state
+
+            Service -> CRunner : requestFinalReport(simulationId)
+
+            activate CRunner
+            CRunner -> ReportThread : generateFinalReport()
+
+            activate ReportThread
+
+            ReportThread -> SharedAccessor : readFinalSimulationMetadata()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : finalSimulationMetadata
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readConfiguration()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : simulationConfiguration
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readFinalFlightStatuses()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : finalFlightStatuses
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readCompletePositionHistory()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : completePositionHistory
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readSafetyViolations()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : safetyViolations
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readEnvironmentalInfluenceData()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : environmentalInfluenceData
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readWarnings()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : warnings
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readErrors()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : errors
+            deactivate SharedAccessor
+
+            ReportThread -> SharedAccessor : readFinalOutcome()
+
+            activate SharedAccessor
+            SharedAccessor --> ReportThread : finalOutcome
+            deactivate SharedAccessor
+
+            ReportThread -> ReportBuilder : addSimulationMetadata(finalSimulationMetadata)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addConfiguration(simulationConfiguration)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addFinalFlightStatuses(finalFlightStatuses)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addCompletePositionHistory(completePositionHistory)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addSafetyViolations(safetyViolations)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addEnvironmentalSummary(environmentalInfluenceData)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addWarningsAndErrors(warnings, errors)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : addFinalOutcome(finalOutcome)
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : added
+            deactivate ReportBuilder
+
+            ReportThread -> ReportBuilder : build()
+
+            activate ReportBuilder
+            ReportBuilder --> ReportThread : FinalSimulationReport
+            deactivate ReportBuilder
+
+            ReportThread -> Formatter : format(finalReport)
+
+            activate Formatter
+            Formatter --> ReportThread : formattedFinalReport
+            deactivate Formatter
+
+            ReportThread --> CRunner : CFinalReportOutput
+            deactivate ReportThread
+
+            CRunner --> Service : CFinalReportOutput
+            deactivate CRunner
+
+            Service -> Parser : parse(output)
+
+            activate Parser
+            Parser --> Service : FinalSimulationReportDTO
+            deactivate Parser
+
+            Service --> CTRL : FinalSimulationReportDTO
+            CTRL --> UI : Final simulation report
+            UI --> FCO : Display final simulation report
+
+        else simulation is still running
+
+            Service --> CTRL : Final report unavailable
+            CTRL --> UI : Error
+            UI --> FCO : Display final report unavailable message
+
+        end
+
+    else simulation does not exist
+
+        Service --> CTRL : Final report generation failed
+        CTRL --> UI : Error
+        UI --> FCO : Display simulation not found message
+
+    end
+
+else FCO is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> FCO : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate FCO
+
+@enduml

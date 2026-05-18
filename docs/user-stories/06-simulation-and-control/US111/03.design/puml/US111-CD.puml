@@ -1,0 +1,194 @@
+@startuml
+title US111-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class GenerateFinalSimulationReportUI {
+        - simulationId: String
+        + requestData()
+        + displayFinalReport(report: FinalSimulationReportDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class GenerateFinalSimulationReportController {
+        + generateFinalReport(request: GenerateFinalSimulationReportRequest): FinalSimulationReportDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class GenerateFinalSimulationReportService {
+        + generateFinalReport(request: GenerateFinalSimulationReportRequest): FinalSimulationReportDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class GenerateFinalSimulationReportRequest {
+        - simulationId: String
+    }
+
+    class FinalSimulationStatePolicy {
+        + canGenerateFinalReport(simulation: Simulation): boolean
+    }
+
+    class FinalSimulationReportDTO {
+        - simulationId: String
+        - generatedAt: LocalDateTime
+        - finalOutcome: String
+        - completedNormally: boolean
+        - terminatedEarly: boolean
+        - failureReason: String
+        - finalFlightStatuses: List<FinalFlightProcessStatusDTO>
+        - positionHistorySummary: String
+        - safetyViolations: List<SafetyViolationDTO>
+        - environmentalSummary: String
+        - warnings: List<String>
+        - errors: List<String>
+    }
+
+    class FinalFlightProcessStatusDTO {
+        - flightId: String
+        - processId: int
+        - status: String
+    }
+
+    class SafetyViolationDTO {
+        - violationId: String
+        - timestamp: long
+        - involvedAircraftIds: List<String>
+        - severity: String
+        - description: String
+    }
+}
+
+package "integration.c" #DDDDDD {
+    class CFinalReportGenerationRunner {
+        + requestFinalReport(simulationId: String): CFinalReportOutput
+    }
+
+    class CFinalReportOutput {
+        - exitCode: int
+        - stdout: String
+        - stderr: String
+    }
+
+    class FinalSimulationReportOutputParser {
+        + parse(output: CFinalReportOutput): FinalSimulationReportDTO
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Simulation {
+        - simulationId: String
+        - status: SimulationStatus
+        - startedAt: LocalDateTime
+        - endedAt: LocalDateTime
+    }
+
+    class SimulationStatus {
+        - value: String
+        + isFinal(): boolean
+    }
+
+    class FinalSimulationReport {
+        - reportId: String
+        - generatedAt: LocalDateTime
+        - finalOutcome: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface SimulationRepository {
+        + findById(simulationId: String): Optional<Simulation>
+    }
+}
+
+package "c.simulation.report" #DDDDDD {
+    class ReportGenerationThread {
+        + generateFinalReport()
+    }
+
+    class FinalReportDataBuilder {
+        + addSimulationMetadata()
+        + addConfiguration()
+        + addFinalFlightStatuses()
+        + addCompletePositionHistory()
+        + addSafetyViolations()
+        + addEnvironmentalSummary()
+        + addWarningsAndErrors()
+        + addFinalOutcome()
+        + build(): FinalSimulationReport
+    }
+
+    class FinalSimulationReportFormatter {
+        + format(report: FinalSimulationReport): String
+    }
+}
+
+package "c.simulation.shared" #DDDDDD {
+    class SharedMemoryAccessor {
+        + readFinalSimulationMetadata()
+        + readConfiguration()
+        + readFinalFlightStatuses()
+        + readCompletePositionHistory()
+        + readSafetyViolations()
+        + readEnvironmentalInfluenceData()
+        + readWarnings()
+        + readErrors()
+        + readFinalOutcome()
+    }
+}
+
+GenerateFinalSimulationReportUI --> GenerateFinalSimulationReportController : uses >
+GenerateFinalSimulationReportController --> GenerateFinalSimulationReportService : uses >
+GenerateFinalSimulationReportService --> AuthorizationService : checks permission >
+GenerateFinalSimulationReportService --> SimulationRepository : retrieves simulation >
+GenerateFinalSimulationReportService --> FinalSimulationStatePolicy : validates final state >
+GenerateFinalSimulationReportService --> CFinalReportGenerationRunner : requests C final report >
+GenerateFinalSimulationReportService --> FinalSimulationReportOutputParser : parses output >
+GenerateFinalSimulationReportService --> FinalSimulationReportDTO : returns >
+
+CFinalReportGenerationRunner --> CFinalReportOutput : returns >
+FinalSimulationReportOutputParser --> FinalSimulationReportDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+Simulation *-- SimulationStatus
+SimulationRepository --> Simulation : returns >
+FinalSimulationStatePolicy --> Simulation : checks >
+
+ReportGenerationThread --> SharedMemoryAccessor : reads complete data >
+ReportGenerationThread --> FinalReportDataBuilder : builds >
+FinalReportDataBuilder --> FinalSimulationReport : creates >
+FinalReportDataBuilder --> FinalSimulationReportFormatter : formats >
+
+@enduml

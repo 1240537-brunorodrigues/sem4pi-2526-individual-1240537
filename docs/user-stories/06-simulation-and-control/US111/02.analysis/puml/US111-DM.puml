@@ -1,0 +1,105 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class Simulation {
+    simulationId
+    status
+    startedAt
+    endedAt
+}
+
+class FinalSimulationState {
+    completed
+    failed
+    terminated
+}
+
+class SimulationConfiguration {
+    timeStepInterval
+    geographicArea
+    safetyThresholds
+    performanceSettings
+}
+
+class ReportGenerationThread {
+    threadId
+    status
+}
+
+class FinalSimulationReport {
+    reportId
+    generatedAt
+    finalOutcome
+}
+
+class FinalFlightProcessStatus {
+    flightId
+    processId
+    status
+}
+
+class CompletePositionHistory {
+    totalPositions
+}
+
+class SafetyViolationEvent {
+    violationId
+    timestamp
+    involvedAircraftIds
+    severity
+    description
+}
+
+class EnvironmentalInfluenceSummary {
+    environmentalDataUsed
+    defaultDataUsed
+    warnings
+}
+
+class SimulationWarning {
+    timestamp
+    message
+}
+
+class SimulationError {
+    timestamp
+    message
+}
+
+class FinalOutcomeSummary {
+    completedNormally
+    terminatedEarly
+    failureReason
+}
+
+FlightControlOperator "1" -- "*" FinalSimulationReport : requests >
+
+Simulation "1" -- "1" FinalSimulationState : has >
+Simulation "1" -- "1" SimulationConfiguration : uses >
+Simulation "1" -- "1" FinalSimulationReport : produces >
+
+ReportGenerationThread "1" -- "*" FinalSimulationReport : generates >
+
+FinalSimulationReport "1" -- "1" Simulation : describes >
+FinalSimulationReport "1" o-- "*" FinalFlightProcessStatus : includes >
+FinalSimulationReport "1" -- "1" CompletePositionHistory : includes >
+FinalSimulationReport "1" o-- "*" SafetyViolationEvent : includes >
+FinalSimulationReport "1" -- "0..1" EnvironmentalInfluenceSummary : includes >
+FinalSimulationReport "1" o-- "*" SimulationWarning : includes >
+FinalSimulationReport "1" o-- "*" SimulationError : includes >
+FinalSimulationReport "1" -- "1" FinalOutcomeSummary : includes >
+
+@enduml
