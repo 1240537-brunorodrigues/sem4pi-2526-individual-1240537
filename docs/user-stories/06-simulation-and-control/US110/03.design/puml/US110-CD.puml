@@ -1,0 +1,142 @@
+@startuml
+title US110-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.process" #DDDDDD {
+    class ParentSimulationProcess {
+        - processId: int
+        + prepareEnvironmentalData()
+        + publishEnvironmentForStep(step: TimeStep)
+    }
+
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        + executeStep(step: TimeStep)
+        + applyEnvironmentalInfluences()
+    }
+}
+
+package "c.simulation.environment" #DDDDDD {
+    class EnvironmentalDataProvider {
+        + getDataForContext(context: SimulationEnvironmentContext): EnvironmentalDataSet
+    }
+
+    class EnvironmentalDataValidator {
+        + validate(dataSet: EnvironmentalDataSet): EnvironmentalValidationResult
+    }
+
+    class EnvironmentalPolicy {
+        + handleMissingData(context: SimulationEnvironmentContext): EnvironmentalDataSet
+        + handleInvalidData(result: EnvironmentalValidationResult): int
+    }
+
+    class EnvironmentalDataSet {
+        - entries: EnvironmentalData[]
+    }
+
+    class EnvironmentalData {
+        - timestamp: long
+        - airControlAreaCode: String
+        - windSpeed: double
+        - windDirection: double
+        - temperature: double
+        - pressure: double
+        - visibility: double
+    }
+
+    class EnvironmentalValidationResult {
+        - valid: boolean
+        - errors: String[]
+    }
+
+    class EnvironmentalInfluenceModel {
+        + apply(state: AircraftState, data: EnvironmentalData): AdjustedAircraftState
+    }
+
+    class SimulationEnvironmentContext {
+        - areaCode: String
+        - startTime: long
+        - endTime: long
+    }
+}
+
+package "c.simulation.shared" #DDDDDD {
+    class SharedEnvironmentalDataManager {
+        + writeEnvironmentForStep(step: TimeStep, data: EnvironmentalData): int
+        + readEnvironmentForStep(step: TimeStep): EnvironmentalData
+    }
+
+    class SharedAircraftStateWriter {
+        + writeAdjustedState(state: AdjustedAircraftState): int
+    }
+
+    class AircraftState {
+        - aircraftId: String
+        - latitude: double
+        - longitude: double
+        - altitude: double
+        - fuelQuantity: double
+    }
+
+    class AdjustedAircraftState {
+        - aircraftId: String
+        - latitude: double
+        - longitude: double
+        - altitude: double
+        - fuelQuantity: double
+        - environmentalEffects: String
+    }
+}
+
+package "c.simulation.time" #DDDDDD {
+    class TimeStep {
+        - index: int
+        - startTime: long
+        - endTime: long
+    }
+}
+
+package "c.simulation.report" #DDDDDD {
+    class SimulationReportUpdater {
+        + addEnvironmentalSummary(dataSet: EnvironmentalDataSet)
+        + addEnvironmentalWarning(message: String)
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logInfo(message: String)
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+ParentSimulationProcess --> EnvironmentalDataProvider : retrieves >
+ParentSimulationProcess --> EnvironmentalDataValidator : validates >
+ParentSimulationProcess --> EnvironmentalPolicy : handles missing/invalid >
+ParentSimulationProcess --> SharedEnvironmentalDataManager : publishes >
+ParentSimulationProcess --> SimulationReportUpdater : reports >
+ParentSimulationProcess --> SimulationLogger : logs >
+
+FlightProcess --> SharedEnvironmentalDataManager : reads >
+FlightProcess --> EnvironmentalInfluenceModel : applies >
+FlightProcess --> SharedAircraftStateWriter : writes adjusted state >
+
+EnvironmentalDataProvider --> EnvironmentalDataSet : returns >
+EnvironmentalDataValidator --> EnvironmentalValidationResult : returns >
+EnvironmentalPolicy --> EnvironmentalDataSet : may create defaults >
+EnvironmentalDataSet "1" o-- "*" EnvironmentalData
+
+EnvironmentalInfluenceModel --> AircraftState : reads >
+EnvironmentalInfluenceModel --> EnvironmentalData : uses >
+EnvironmentalInfluenceModel --> AdjustedAircraftState : produces >
+
+SharedEnvironmentalDataManager --> EnvironmentalData : stores/reads >
+SharedAircraftStateWriter --> AdjustedAircraftState : writes >
+
+@enduml

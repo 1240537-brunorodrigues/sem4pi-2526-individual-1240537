@@ -1,0 +1,130 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "ParentSimulationProcess" as ParentProcess
+participant "EnvironmentalDataProvider" as EnvProvider
+participant "EnvironmentalDataValidator" as EnvValidator
+participant "EnvironmentalPolicy" as EnvPolicy
+participant "SharedEnvironmentalDataManager" as SharedEnvManager
+participant "FlightProcess" as FlightProcess
+participant "EnvironmentalInfluenceModel" as InfluenceModel
+participant "SharedAircraftStateWriter" as StateWriter
+participant "SimulationReportUpdater" as ReportUpdater
+participant "SimulationLogger" as Logger
+
+activate ParentProcess
+
+ParentProcess -> EnvProvider : getDataForContext(simulationContext)
+
+activate EnvProvider
+EnvProvider --> ParentProcess : environmentalDataSet
+deactivate EnvProvider
+
+ParentProcess -> EnvValidator : validate(environmentalDataSet)
+
+activate EnvValidator
+EnvValidator --> ParentProcess : validationResult
+deactivate EnvValidator
+
+alt environmental data is valid
+
+    ParentProcess -> ReportUpdater : addEnvironmentalSummary(environmentalDataSet)
+
+    activate ReportUpdater
+    ReportUpdater --> ParentProcess : summary added
+    deactivate ReportUpdater
+
+    loop for each simulation time step
+
+        ParentProcess -> SharedEnvManager : writeEnvironmentForStep(currentStep, environmentalData)
+
+        activate SharedEnvManager
+        SharedEnvManager --> ParentProcess : environment published
+        deactivate SharedEnvManager
+
+        activate FlightProcess
+
+        FlightProcess -> SharedEnvManager : readEnvironmentForStep(currentStep)
+
+        activate SharedEnvManager
+        SharedEnvManager --> FlightProcess : environmentalData
+        deactivate SharedEnvManager
+
+        FlightProcess --> FlightProcess : calculate base aircraft state
+
+        FlightProcess -> InfluenceModel : apply(baseState, environmentalData)
+
+        activate InfluenceModel
+        InfluenceModel --> FlightProcess : adjustedAircraftState
+        deactivate InfluenceModel
+
+        FlightProcess -> StateWriter : writeAdjustedState(adjustedAircraftState)
+
+        activate StateWriter
+        StateWriter --> FlightProcess : adjusted state written
+        deactivate StateWriter
+
+        deactivate FlightProcess
+
+        ParentProcess --> ParentProcess : Continue step synchronization
+
+    end
+
+else environmental data is missing
+
+    ParentProcess -> EnvPolicy : handleMissingData(simulationContext)
+
+    activate EnvPolicy
+    EnvPolicy --> ParentProcess : defaultEnvironmentalDataSet / failure
+    deactivate EnvPolicy
+
+    alt default environmental data is available
+
+        ParentProcess -> ReportUpdater : addEnvironmentalWarning("Default environmental data used")
+
+        activate ReportUpdater
+        ReportUpdater --> ParentProcess : warning added
+        deactivate ReportUpdater
+
+        ParentProcess -> Logger : logWarning("Default environmental data used")
+
+        activate Logger
+        Logger --> ParentProcess : warning logged
+        deactivate Logger
+
+    else no valid default environmental data
+
+        ParentProcess -> Logger : logError("Environmental data unavailable")
+
+        activate Logger
+        Logger --> ParentProcess : error logged
+        deactivate Logger
+
+        ParentProcess --> ParentProcess : Stop or mark simulation as failed
+
+    end
+
+else environmental data is invalid
+
+    ParentProcess -> EnvPolicy : handleInvalidData(validationResult)
+
+    activate EnvPolicy
+    EnvPolicy --> ParentProcess : handled / failure
+    deactivate EnvPolicy
+
+    ParentProcess -> Logger : logError("Invalid environmental data")
+
+    activate Logger
+    Logger --> ParentProcess : error logged
+    deactivate Logger
+
+end
+
+deactivate ParentProcess
+
+@enduml
