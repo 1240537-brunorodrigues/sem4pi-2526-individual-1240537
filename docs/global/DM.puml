@@ -1,0 +1,1429 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+title Global Domain Model
+
+' ============================================================
+' USERS, ROLES AND AUTHORIZATION
+' ============================================================
+
+class User {
+    email
+    name
+    phoneNumber
+    status
+}
+
+class Credential {
+    passwordHash
+}
+
+class Role {
+    name
+}
+
+class Permission {
+    name
+}
+
+class SecurityClearance {
+    expirationDate
+}
+
+class SkillsAssessment {
+    lastAssessmentDate
+    validityPeriod
+}
+
+class UserStatus {
+    enabled
+    disabled
+}
+
+class Administrator {
+}
+
+class BackofficeOperator {
+}
+
+class WeatherPerson {
+}
+
+class FlightControlOperator {
+}
+
+class Pilot {
+    licenseNumber
+    status
+}
+
+class AirTransportCompanyCollaborator {
+    position
+}
+
+class CustomerCollaborator {
+    position
+    status
+}
+
+User <|-- Administrator
+User <|-- BackofficeOperator
+User <|-- WeatherPerson
+User <|-- FlightControlOperator
+User <|-- Pilot
+User <|-- CustomerCollaborator
+CustomerCollaborator <|-- AirTransportCompanyCollaborator
+
+User "1" -- "1" Credential : has >
+User "1" -- "1..*" Role : has >
+Role "1" -- "*" Permission : grants >
+User "1" -- "0..1" SecurityClearance : has >
+User "1" -- "0..1" SkillsAssessment : has >
+User "1" -- "1" UserStatus : has >
+
+' ============================================================
+' CUSTOMERS, COMPANIES AND AIR CONTROL AREAS
+' ============================================================
+
+class Customer {
+    id
+    name
+}
+
+class AirTransportCompany {
+    name
+    iataCode
+    icaoCode
+}
+
+class AirControlArea {
+    code
+    name
+    geographicBoundaries
+}
+
+class AirlineIATACode {
+    value
+}
+
+class AirlineICAOCode {
+    value
+}
+
+class AreaCode {
+    value
+}
+
+class GeographicBoundary {
+    coordinates
+}
+
+class Coordinate {
+    latitude
+    longitude
+}
+
+class Country {
+    name
+    code
+}
+
+Customer <|-- AirTransportCompany
+Customer <|-- AirControlArea
+
+AirTransportCompany "1" -- "1" AirlineIATACode : identified by >
+AirTransportCompany "1" -- "1" AirlineICAOCode : identified by >
+AirControlArea "1" -- "1" AreaCode : identified by >
+AirControlArea "1" -- "1" GeographicBoundary : has >
+GeographicBoundary "1" o-- "3..*" Coordinate : defined by >
+
+Customer "1" -- "*" CustomerCollaborator : has >
+CustomerCollaborator "1" -- "1" User : is >
+
+AirTransportCompanyCollaborator "*" -- "1" AirTransportCompany : belongs to >
+
+' ============================================================
+' AIRPORTS AND ROUTES
+' ============================================================
+
+class Airport {
+    name
+    town
+    country
+    elevation
+}
+
+class IATACode {
+    value
+}
+
+class ICAOCode {
+    value
+}
+
+class FlightRoute {
+    routeCode
+    description
+    status
+    deactivationDate
+}
+
+class RouteStatus {
+    active
+    deactivated
+}
+
+Airport "*" -- "1" AirControlArea : belongs to >
+Airport "1" -- "1" IATACode : identified by >
+Airport "1" -- "1" ICAOCode : identified by >
+Airport "1" -- "1" Coordinate : located at >
+Airport "*" -- "1" Country : located in >
+
+AirTransportCompany "1" -- "*" FlightRoute : owns >
+FlightRoute "*" -- "1" Airport : origin >
+FlightRoute "*" -- "1" Airport : destination >
+FlightRoute "1" -- "1" RouteStatus : has >
+
+' ============================================================
+' AIRCRAFT MODELS, ENGINES AND FLEET
+' ============================================================
+
+class AircraftManufacturer {
+    name
+    country
+}
+
+class AircraftType {
+    name
+}
+
+class AircraftModel {
+    modelName
+    emptyWeight
+    maximumTakeOffWeight
+    maximumZeroFuelWeight
+    maximumFuelCapacity
+    serviceCeiling
+    cruiseSpeed
+    wingArea
+    dragCoefficient
+    liftCoefficient
+    capacity
+}
+
+class EngineManufacturer {
+    name
+    country
+}
+
+class EngineType {
+    name
+}
+
+class FuelType {
+    name
+}
+
+class AircraftEngineModel {
+    modelName
+    power
+    efficiency
+}
+
+class CertifiedEngineModel {
+    certificationDate
+    certificationStatus
+}
+
+class AircraftConfiguration {
+    aircraftModel
+    engineModel
+}
+
+class Fleet {
+    aircraft
+}
+
+class Aircraft {
+    registrationNumber
+    registeredCountry
+    operationalStatus
+    flightCrewSize
+}
+
+class AircraftAge {
+    years
+    months
+}
+
+class OperationalStatus {
+    active
+    maintenance
+    decommissioned
+}
+
+class CabinConfiguration {
+    totalSeats
+}
+
+class SeatClass {
+    name
+    seatCount
+}
+
+AircraftModel "*" -- "1" AircraftManufacturer : made by >
+AircraftModel "*" -- "1" AircraftType : has >
+AircraftModel "1" -- "1..*" CertifiedEngineModel : certifies >
+CertifiedEngineModel "*" -- "1" AircraftEngineModel : references >
+
+AircraftEngineModel "*" -- "1" EngineManufacturer : made by >
+AircraftEngineModel "*" -- "1" EngineType : has >
+AircraftEngineModel "*" -- "1" FuelType : uses >
+
+AirTransportCompany "1" -- "1" Fleet : has >
+Fleet "1" o-- "*" Aircraft : contains >
+AirTransportCompany "1" -- "*" Aircraft : owns >
+
+Aircraft "1" -- "1" AircraftConfiguration : has >
+AircraftConfiguration "*" -- "1" AircraftModel : uses >
+AircraftConfiguration "*" -- "1" AircraftEngineModel : uses >
+Aircraft "1" -- "1" CabinConfiguration : has >
+CabinConfiguration "1" o-- "*" SeatClass : contains >
+Aircraft "*" -- "1" Country : registered in >
+Aircraft "1" -- "1" OperationalStatus : has >
+Aircraft "1" -- "0..1" AircraftAge : has calculated >
+
+' ============================================================
+' PILOTS AND CERTIFICATIONS
+' ============================================================
+
+class PilotRoster {
+    activePilots
+}
+
+class PilotStatus {
+    active
+    inactive
+}
+
+class PilotLicense {
+    licenseNumber
+}
+
+class PilotCertification {
+    certificationDate
+    validUntil
+}
+
+AirTransportCompany "1" -- "1" PilotRoster : has >
+PilotRoster "1" o-- "*" Pilot : contains >
+AirTransportCompany "1" -- "*" Pilot : employs >
+Pilot "*" -- "1" AirTransportCompany : belongs to >
+Pilot "1" -- "1" PilotStatus : has >
+Pilot "1" -- "1" PilotLicense : has >
+Pilot "1" -- "1..*" PilotCertification : holds >
+PilotCertification "*" -- "1" AircraftModel : certifies for >
+
+' ============================================================
+' WEATHER AND ENVIRONMENTAL DATA
+' ============================================================
+
+class WeatherData {
+    dateTime
+    windDirection
+    windSpeed
+    temperature
+    pressure
+    visibility
+    precipitation
+}
+
+class Wind {
+    direction
+    speed
+}
+
+class WeatherSource {
+    type
+    providerName
+}
+
+class WeatherService {
+    weatherRecords
+}
+
+class BulkWeatherImport {
+    importDateTime
+    sourceType
+}
+
+class WeatherImportReport {
+    totalRecords
+    successfulRecords
+    failedRecords
+}
+
+class ValidationError {
+    type
+    location
+    message
+}
+
+class WeatherQuery {
+    date
+    airControlArea
+}
+
+WeatherPerson "1" -- "*" WeatherData : registers >
+WeatherPerson "1" -- "*" BulkWeatherImport : performs >
+WeatherService "1" o-- "*" WeatherData : stores >
+BulkWeatherImport "1" -- "*" WeatherData : imports >
+BulkWeatherImport "1" -- "1" WeatherSource : uses >
+BulkWeatherImport "1" -- "1" WeatherImportReport : produces >
+WeatherImportReport "1" o-- "*" ValidationError : contains >
+
+WeatherData "*" -- "1" AirControlArea : belongs to >
+WeatherData "1" -- "1" Wind : contains >
+WeatherData "*" -- "1" WeatherSource : has >
+
+User "1" -- "*" WeatherQuery : performs >
+WeatherQuery "*" -- "1" AirControlArea : targets >
+WeatherQuery "1" -- "*" WeatherData : returns >
+
+' ============================================================
+' FLIGHT PLANS AND DSL
+' ============================================================
+
+class FlightPlan {
+    flightNumber
+    departureDateTime
+    fuelQuantity
+    status
+    testStatus
+}
+
+class FlightPlanStatus {
+    draft
+    validated
+    rejected
+}
+
+class FuelQuantity {
+    value
+}
+
+class PlannedFlight {
+    flightDesignator
+    departureDate
+    status
+}
+
+class AssignedFlightPlan {
+    departureDate
+    status
+}
+
+class FlightPlanFile {
+    fileName
+    fileFormat
+    content
+}
+
+class CoreFlightDSL {
+    version
+    grammar
+}
+
+class DSLFile {
+    fileName
+    content
+}
+
+class Grammar {
+    rules
+}
+
+class Lexer {
+    tokenRules
+}
+
+class Token {
+    type
+    value
+    line
+    column
+}
+
+class Parser {
+    grammarRules
+}
+
+class ParseTree {
+    nodes
+}
+
+class FlightPlanAst {
+    routeName
+    aircraftRegistrationNumber
+    pilotLicenseNumber
+    departureDateTime
+    fuelQuantity
+}
+
+class SemanticValidator {
+    validationRules
+}
+
+class InternalFlightRepresentation {
+    route
+    aircraft
+    pilot
+    departureDateTime
+    fuelQuantity
+    path
+    altitudeProfile
+}
+
+class FlightPlanTest {
+    testedAt
+    result
+    status
+    details
+}
+
+class TestStatus {
+    notTested
+    valid
+    void
+    passed
+    failed
+}
+
+class ValidationResult {
+    result
+    passed
+    message
+}
+
+class FuelValidationResult {
+    initialFuel
+    estimatedFinalFuel
+    minimumRequiredFinalFuel
+    passed
+}
+
+class AltitudeValidationResult {
+    minimumAllowedAltitude
+    minimumPlannedAltitude
+    passed
+}
+
+FlightRoute "1" -- "*" FlightPlan : used by >
+FlightPlan "*" -- "1" FlightRoute : planned for >
+FlightPlan "*" -- "1" Aircraft : uses >
+FlightPlan "*" -- "1" Pilot : assigned to >
+FlightPlan "1" -- "1" FlightPlanStatus : has >
+FlightPlan "1" -- "1" FuelQuantity : has >
+FlightPlan "1" -- "0..1" WeatherData : has >
+FlightPlan "1" -- "0..*" FlightPlanTest : has >
+
+FlightPlan <|-- PlannedFlight
+FlightPlan <|-- AssignedFlightPlan
+
+Pilot "1" -- "*" FlightPlan : owns/creates >
+Pilot "1" -- "*" FlightPlanFile : imports >
+
+FlightPlanFile "1" -- "1" CoreFlightDSL : conforms to >
+DSLFile "*" -- "1" CoreFlightDSL : conforms to >
+CoreFlightDSL "1" -- "1" Grammar : defines >
+
+Lexer "1" -- "*" Token : produces >
+Parser "1" -- "1" ParseTree : produces >
+ParseTree "1" -- "1" FlightPlanAst : maps to >
+FlightPlanAst "1" -- "1" InternalFlightRepresentation : maps to >
+SemanticValidator "1" -- "1" InternalFlightRepresentation : validates >
+InternalFlightRepresentation "1" -- "1" FlightPlan : creates >
+
+Lexer "1" o-- "*" ValidationError : may produce >
+Parser "1" o-- "*" ValidationError : may produce >
+SemanticValidator "1" o-- "*" ValidationError : may produce >
+
+FlightPlanTest "1" -- "1" TestStatus : has >
+FlightPlanTest "1" -- "1" ValidationResult : stores >
+FlightPlanTest "1" -- "0..1" FuelValidationResult : includes >
+FlightPlanTest "1" -- "0..1" AltitudeValidationResult : includes >
+
+' ============================================================
+' REMOTE APPLICATION ACCESS
+' ============================================================
+
+class AirTransportCompanyApp {
+    tcpClient
+}
+
+class EmbeddedServerApplication {
+    tcpServer
+}
+
+class TCPConnection {
+    host
+    port
+    status
+}
+
+class RemoteRequest {
+    operation
+    payload
+}
+
+class RemoteResponse {
+    status
+    payload
+    errorMessage
+}
+
+class AuthenticationService {
+}
+
+class AuthorizationService {
+}
+
+class ApplicationService {
+    useCase
+}
+
+class FlightPlanService {
+}
+
+class Database {
+}
+
+AirTransportCompanyCollaborator "1" -- "1" AirTransportCompanyApp : uses >
+Pilot "1" -- "1" AirTransportCompanyApp : uses >
+AirTransportCompanyApp "1" -- "1" TCPConnection : opens >
+TCPConnection "1" -- "1" EmbeddedServerApplication : connects to >
+AirTransportCompanyApp "1" -- "*" RemoteRequest : sends >
+EmbeddedServerApplication "1" -- "*" RemoteRequest : receives >
+EmbeddedServerApplication "1" -- "*" RemoteResponse : returns >
+EmbeddedServerApplication "1" -- "1" AuthenticationService : authenticates through >
+EmbeddedServerApplication "1" -- "1" AuthorizationService : authorizes through >
+EmbeddedServerApplication "1" -- "*" ApplicationService : delegates to >
+ApplicationService <|-- FlightPlanService
+ApplicationService "*" -- "1" Database : accesses through repositories >
+AirTransportCompanyApp ..> Database : forbidden direct access
+
+' ============================================================
+' SIMULATION CORE
+' ============================================================
+
+class Simulation {
+    simulationId
+    startTime
+    endTime
+    status
+}
+
+class GeographicArea {
+    code
+    boundaries
+}
+
+class SimulationConfiguration {
+    numberOfFlights
+    timeStepInterval
+    sharedMemoryCapacity
+    geographicArea
+    safetyThresholds
+    performanceSettings
+}
+
+class PerformanceSettings {
+    timeStep
+    executionMode
+}
+
+class SafetyThreshold {
+    minimumSeparation
+    minimumHorizontalSeparation
+    minimumVerticalSeparation
+    maximumViolationCount
+}
+
+class SimulationEngine {
+    currentTimeStep
+    timeStepInterval
+    status
+}
+
+class HybridSimulationEnvironment {
+    status
+}
+
+class MainSimulationProcess {
+    processId
+    status
+    currentTimeStep
+    violationCount
+}
+
+class ParentSimulationProcess {
+    processId
+    status
+    currentTimeStep
+}
+
+class FlightProcess {
+    processId
+    flightId
+    aircraftId
+    status
+}
+
+class Pipe {
+    readDescriptor
+    writeDescriptor
+}
+
+class Signal {
+    type
+}
+
+class SignalHandler {
+    handledSignal
+    blocksOtherSignals
+    configured
+}
+
+class SignalNotification {
+    signalType
+    targetProcessId
+    delivered
+}
+
+class TerminationRequest {
+    reason
+    timestamp
+}
+
+FlightControlOperator "1" -- "*" Simulation : starts >
+Simulation "1" -- "1" GeographicArea : runs in >
+Simulation "1" -- "1..*" FlightPlan : includes >
+Simulation "1" -- "1" SimulationConfiguration : uses >
+Simulation "1" -- "1" SafetyThreshold : uses >
+Simulation "1" -- "1" PerformanceSettings : uses >
+Simulation "1" -- "1" MainSimulationProcess : controlled by >
+
+HybridSimulationEnvironment "1" -- "1" SimulationConfiguration : uses >
+HybridSimulationEnvironment "1" -- "1" ParentSimulationProcess : initializes >
+HybridSimulationEnvironment "1" -- "1" SharedMemorySegment : allocates >
+HybridSimulationEnvironment "1" -- "1" SemaphoreSet : initializes >
+
+SimulationEngine "1" -- "1" ParentSimulationProcess : controls >
+MainSimulationProcess "1" -- "1..*" FlightProcess : forks >
+ParentSimulationProcess "1" -- "1..*" FlightProcess : forks >
+FlightProcess "*" -- "1" FlightPlan : executes >
+
+MainSimulationProcess "1" -- "1..*" Pipe : communicates through >
+FlightProcess "*" -- "1" Pipe : sends through >
+
+MainSimulationProcess "1" -- "*" Signal : sends/receives >
+FlightProcess "*" -- "*" Signal : handles >
+FlightProcess "1" -- "1" SignalHandler : has >
+SignalNotification "*" -- "1" FlightProcess : targets >
+TerminationRequest "*" -- "*" FlightProcess : terminates >
+
+' ============================================================
+' MOVEMENT, POSITIONS AND STEP SYNCHRONIZATION
+' ============================================================
+
+class TimeStep {
+    index
+    startTime
+    endTime
+}
+
+class SimulationClock {
+    currentStep
+    interval
+}
+
+class MovementMessage {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+    velocityX
+    velocityY
+    velocityZ
+}
+
+class MovementValidationResult {
+    valid
+    errors
+}
+
+class PositionUpdate {
+    aircraftId
+    timeStep
+    latitude
+    longitude
+    altitude
+}
+
+class AircraftPosition {
+    aircraftId
+    timestamp
+    latitude
+    longitude
+    altitude
+}
+
+class VelocityVector {
+    x
+    y
+    z
+}
+
+class CurrentPositionMap {
+    positionsByAircraft
+}
+
+class PositionHistory {
+    positions
+}
+
+class ExpectedUpdateSet {
+    expectedFlightProcesses
+}
+
+class StepUpdateBuffer {
+    updates
+}
+
+class StepBarrier {
+    completed
+}
+
+class SynchronizationIssue {
+    type
+    description
+}
+
+class ActiveFlightProcessSet {
+    activeProcessIds
+}
+
+class StartStepSemaphore {
+    value
+}
+
+class CompletionSemaphore {
+    value
+}
+
+class StepCompletionBarrier {
+    expectedCompletions
+    receivedCompletions
+}
+
+class SynchronizationFailure {
+    type
+    description
+}
+
+SimulationEngine "1" -- "*" TimeStep : progresses through >
+SimulationClock "1" -- "*" TimeStep : progresses through >
+ParentSimulationProcess "1" -- "1" SimulationClock : advances >
+ParentSimulationProcess "1" -- "1" ActiveFlightProcessSet : maintains >
+
+FlightProcess "1" -- "*" MovementMessage : sends >
+MainSimulationProcess "1" -- "*" MovementMessage : receives >
+MovementMessage "1" -- "1" AircraftPosition : contains >
+MovementMessage "1" -- "0..1" VelocityVector : may include >
+MovementMessage "1" -- "1" MovementValidationResult : validated by >
+
+MainSimulationProcess "1" -- "1" CurrentPositionMap : updates >
+MainSimulationProcess "1" -- "1" PositionHistory : stores >
+CurrentPositionMap "1" o-- "*" AircraftPosition : latest positions >
+PositionHistory "1" o-- "*" AircraftPosition : past positions >
+
+FlightProcess "*" -- "*" PositionUpdate : sends >
+PositionUpdate "*" -- "1" TimeStep : belongs to >
+MainSimulationProcess "1" -- "1" ExpectedUpdateSet : defines >
+MainSimulationProcess "1" -- "1" StepUpdateBuffer : collects >
+MainSimulationProcess "1" -- "1" StepBarrier : waits at >
+ExpectedUpdateSet "1" o-- "*" FlightProcess : expects >
+StepUpdateBuffer "1" o-- "*" PositionUpdate : stores >
+MainSimulationProcess "1" -- "0..*" SynchronizationIssue : detects >
+
+ParentSimulationProcess "1" -- "1" StartStepSemaphore : releases >
+FlightProcess "*" -- "1" StartStepSemaphore : waits on >
+FlightProcess "*" -- "1" CompletionSemaphore : signals >
+ParentSimulationProcess "1" -- "1" CompletionSemaphore : waits on >
+ParentSimulationProcess "1" -- "1" StepCompletionBarrier : uses >
+StepCompletionBarrier "1" -- "1" ActiveFlightProcessSet : based on >
+ParentSimulationProcess "1" -- "0..*" SynchronizationFailure : handles >
+
+' ============================================================
+' SHARED MEMORY, THREADS AND SYNCHRONIZATION PRIMITIVES
+' ============================================================
+
+class SharedMemorySegment {
+    name
+    size
+    initialized
+}
+
+class SharedSimulationData {
+    currentTimeStep
+    aircraftPositions
+    safetyViolations
+    simulationStatus
+    processStatuses
+    warnings
+    errors
+}
+
+class SharedAircraftState {
+    aircraftId
+    timeStep
+    latitude
+    longitude
+    altitude
+}
+
+class SemaphoreSet {
+    semaphores
+}
+
+class Mutex {
+    name
+    locked
+}
+
+class ConditionVariable {
+    name
+    waitingThreads
+}
+
+class DedicatedThread {
+    threadId
+    responsibility
+    status
+}
+
+class SafetyViolationDetectionThread {
+    scanInterval
+}
+
+class ReportGenerationThread {
+    reportStatus
+}
+
+class EnvironmentThread {
+    threadId
+    status
+}
+
+class AdditionalFunctionThread {
+    functionName
+}
+
+class ThreadLifecycle {
+    created
+    running
+    stopped
+}
+
+class ThreadCreationResult {
+    success
+    errorMessage
+}
+
+ParentSimulationProcess "1" -- "2..*" DedicatedThread : creates >
+DedicatedThread <|-- SafetyViolationDetectionThread
+DedicatedThread <|-- ReportGenerationThread
+DedicatedThread <|-- EnvironmentThread
+DedicatedThread <|-- AdditionalFunctionThread
+
+ParentSimulationProcess "1" -- "1" SharedMemorySegment : uses >
+SharedMemorySegment "1" -- "1" SharedSimulationData : contains >
+SharedMemorySegment "1" o-- "*" SharedAircraftState : stores >
+FlightProcess "*" -- "1" SharedMemorySegment : attaches/writes to >
+
+ParentSimulationProcess "1" -- "*" Mutex : uses >
+ParentSimulationProcess "1" -- "*" ConditionVariable : uses >
+DedicatedThread "*" -- "*" Mutex : uses >
+DedicatedThread "*" -- "*" ConditionVariable : waits/signals >
+DedicatedThread "*" -- "1" ThreadLifecycle : has >
+ParentSimulationProcess "1" -- "*" ThreadCreationResult : receives >
+
+SafetyViolationDetectionThread "1" -- "1" SharedSimulationData : scans >
+ReportGenerationThread "1" -- "1" SharedSimulationData : reads >
+EnvironmentThread "1" -- "1" SharedMemorySegment : writes to >
+
+' ============================================================
+' SAFETY VIOLATIONS
+' ============================================================
+
+class SafetyViolation {
+    violationId
+    timestamp
+    severity
+    description
+}
+
+class SafetyViolationEvent {
+    violationId
+    timestamp
+    involvedAircraftIds
+    severity
+    description
+}
+
+class ViolationEventLog {
+    events
+}
+
+class SharedViolationState {
+    pendingViolationCount
+    shutdownRequested
+}
+
+class PendingViolationQueue {
+    events
+}
+
+class ViolationMutex {
+    locked
+}
+
+class ViolationConditionVariable {
+    waitingThreads
+}
+
+class NotificationResult {
+    success
+    errorMessage
+}
+
+class ReportData {
+    safetyViolationEntries
+}
+
+MainSimulationProcess "1" -- "0..*" SafetyViolation : detects >
+MainSimulationProcess "1" -- "1" ViolationEventLog : writes >
+SafetyViolation "*" -- "2..*" FlightProcess : involves >
+SafetyViolation "*" -- "2..*" AircraftPosition : based on >
+
+SafetyViolationDetectionThread "1" -- "*" SafetyViolationEvent : detects >
+SafetyViolationDetectionThread "1" -- "1" SharedViolationState : updates >
+SharedViolationState "1" -- "1" PendingViolationQueue : contains >
+PendingViolationQueue "1" o-- "*" SafetyViolationEvent : stores >
+SharedViolationState "1" -- "1" ViolationMutex : protected by >
+SharedViolationState "1" -- "1" ViolationConditionVariable : notifies through >
+ReportGenerationThread "1" -- "1" ViolationConditionVariable : waits on >
+ReportGenerationThread "1" -- "1" SharedViolationState : reads >
+ReportGenerationThread "1" -- "1" ReportData : updates >
+ReportData "1" o-- "*" SafetyViolationEvent : includes >
+ViolationConditionVariable "1" -- "*" NotificationResult : produces >
+
+' ============================================================
+' ENVIRONMENTAL INFLUENCES IN SIMULATION
+' ============================================================
+
+class EnvironmentalData {
+    timestamp
+    windSpeed
+    windDirection
+    temperature
+    pressure
+    visibility
+    precipitation
+}
+
+class EnvironmentalDataSource {
+    sourceType
+}
+
+class EnvironmentalInfluenceModel {
+    modelName
+}
+
+class EnvironmentalPolicy {
+    missingDataStrategy
+    invalidDataStrategy
+}
+
+class AircraftState {
+    aircraftId
+    latitude
+    longitude
+    altitude
+    fuelQuantity
+}
+
+class AdjustedAircraftState {
+    aircraftId
+    latitude
+    longitude
+    altitude
+    fuelQuantity
+    appliedEnvironmentalEffects
+}
+
+class WindConfiguration {
+    windSpeed
+    windDirection
+}
+
+EnvironmentThread "1" -- "1" WeatherService : loads from >
+WeatherService "1" -- "*" EnvironmentalData : provides >
+EnvironmentalData "1" -- "1" WindConfiguration : includes >
+EnvironmentalData "*" -- "1" AirControlArea : applies to >
+EnvironmentalData "*" -- "1" TimeStep : may apply to >
+SharedMemorySegment "1" o-- "*" EnvironmentalData : contains >
+
+FlightProcess "*" -- "1" EnvironmentalInfluenceModel : applies >
+EnvironmentalInfluenceModel "1" -- "1" EnvironmentalData : uses >
+EnvironmentalInfluenceModel "1" -- "1" AircraftState : adjusts >
+EnvironmentalInfluenceModel "1" -- "1" AdjustedAircraftState : produces >
+ParentSimulationProcess "1" -- "1" EnvironmentalPolicy : applies >
+
+' ============================================================
+' REPORTING
+' ============================================================
+
+class SimulationReport {
+    reportId
+    generatedAt
+    status
+    finalOutcome
+}
+
+class FinalSimulationReport {
+    reportId
+    generatedAt
+    finalOutcome
+}
+
+class MonthlyStatisticsReport {
+    reportId
+    generatedAt
+    filePath
+}
+
+class FlightSummary {
+    flightId
+    aircraftId
+    processStatus
+}
+
+class PositionSummary {
+    aircraftId
+    totalPositions
+    firstPosition
+    lastPosition
+}
+
+class SafetyViolationSummary {
+    totalViolations
+}
+
+class FinalFlightProcessStatus {
+    flightId
+    processId
+    status
+}
+
+class CompletePositionHistory {
+    totalPositions
+}
+
+class EnvironmentalInfluenceSummary {
+    environmentalDataUsed
+    defaultDataUsed
+    warnings
+}
+
+class FinalOutcomeSummary {
+    completedNormally
+    terminatedEarly
+    failureReason
+}
+
+class SimulationWarning {
+    timestamp
+    message
+}
+
+class SimulationError {
+    timestamp
+    message
+}
+
+class ReportingPeriod {
+    month
+    year
+}
+
+class ReportType {
+    name
+}
+
+class ReportTemplate {
+    header
+    footer
+    branding
+}
+
+class ReportBranding {
+    logo
+    colors
+    organizationName
+}
+
+class ReportSection {
+    title
+    content
+}
+
+class ReportGraphic {
+    title
+    type
+}
+
+class MonthlyStatisticsData {
+    totalSimulations
+    totalFlights
+    totalSafetyViolations
+    passedValidations
+    failedValidations
+}
+
+class ReportDataCollector {
+    strategy
+}
+
+class ReportFile {
+    filePath
+    format
+}
+
+class ReportGenerationResult {
+    success
+    message
+}
+
+FlightControlOperator "1" -- "*" SimulationReport : requests >
+FlightControlOperator "1" -- "*" FinalSimulationReport : requests >
+FlightControlOperator "1" -- "*" MonthlyStatisticsReport : requests >
+
+Simulation "1" -- "1" SimulationReport : may produce >
+Simulation "1" -- "1" FinalSimulationReport : may produce >
+
+ReportGenerationThread "1" -- "*" SimulationReport : generates >
+ReportGenerationThread "1" -- "*" FinalSimulationReport : generates >
+
+SimulationReport "1" -- "1" Simulation : describes >
+SimulationReport "1" o-- "*" FlightSummary : includes >
+SimulationReport "1" o-- "*" PositionSummary : includes >
+SimulationReport "1" -- "1" SafetyViolationSummary : includes >
+SimulationReport "1" o-- "*" SafetyViolationEvent : includes >
+SimulationReport "1" o-- "*" SimulationWarning : includes >
+SimulationReport "1" o-- "*" SimulationError : includes >
+SimulationReport "1" -- "1" ReportFile : saved as >
+
+FinalSimulationReport "1" -- "1" Simulation : describes >
+FinalSimulationReport "1" o-- "*" FinalFlightProcessStatus : includes >
+FinalSimulationReport "1" -- "1" CompletePositionHistory : includes >
+FinalSimulationReport "1" o-- "*" SafetyViolationEvent : includes >
+FinalSimulationReport "1" -- "0..1" EnvironmentalInfluenceSummary : includes >
+FinalSimulationReport "1" o-- "*" SimulationWarning : includes >
+FinalSimulationReport "1" o-- "*" SimulationError : includes >
+FinalSimulationReport "1" -- "1" FinalOutcomeSummary : includes >
+FinalSimulationReport "1" -- "1" ReportFile : saved as >
+
+MonthlyStatisticsReport "1" -- "1" ReportingPeriod : covers >
+MonthlyStatisticsReport "1" -- "1" ReportType : has >
+MonthlyStatisticsReport "1" -- "1" ReportTemplate : uses >
+MonthlyStatisticsReport "1" -- "1" MonthlyStatisticsData : summarizes >
+MonthlyStatisticsReport "1" o-- "*" ReportSection : contains >
+MonthlyStatisticsReport "1" o-- "*" ReportGraphic : contains >
+MonthlyStatisticsReport "1" -- "1" ReportFile : saved as >
+MonthlyStatisticsReport "1" -- "1" ReportGenerationResult : produces >
+
+ReportTemplate "1" -- "1" ReportBranding : applies >
+ReportDataCollector "1" -- "1" ReportType : collects for >
+ReportDataCollector "1" -- "1" MonthlyStatisticsData : produces >
+
+SharedSimulationData "1" o-- "*" SafetyViolationEvent
+SharedSimulationData "1" o-- "*" SimulationWarning
+SharedSimulationData "1" o-- "*" SimulationError
+
+' ============================================================
+' EXTERNAL LOGGING AND VISUALIZATION
+' ============================================================
+
+class SimulationSystem {
+    simulationId
+    status
+}
+
+class SimulationStep {
+    index
+    timestamp
+}
+
+class FlightProgressUpdate {
+    flightId
+    aircraftId
+    simulationStep
+    timestamp
+    latitude
+    longitude
+    altitude
+    velocityVector
+    status
+}
+
+class UDPDatagram {
+    sourceAddress
+    sourcePort
+    payload
+}
+
+class FlightsLoggingServer {
+    host
+    udpPort
+    httpPort
+    status
+}
+
+class UDPReceiver {
+    port
+    status
+}
+
+class DatagramParser {
+    format
+}
+
+class DatagramValidationResult {
+    valid
+    errors
+}
+
+class FlightLogFile {
+    flightId
+    filePath
+}
+
+class FlightLogEntry {
+    simulationStep
+    timestamp
+    position
+    velocityVector
+    status
+}
+
+class LogFileWriteResult {
+    success
+    errorMessage
+}
+
+class WebBrowser {
+    userAgent
+}
+
+class HTTPServer {
+    port
+    status
+}
+
+class StatusPage {
+    url
+    autoRefreshEnabled
+}
+
+class AJAXRequest {
+    endpoint
+    interval
+}
+
+class FlightProgressStore {
+    lastUpdatedAt
+}
+
+class FlightProgressTable {
+    rows
+}
+
+class FlightProgressRow {
+    flightId
+    aircraftId
+    simulationStep
+    position
+    altitude
+    velocity
+    status
+}
+
+FlightControlOperator "1" -- "*" SimulationSystem : monitors >
+SimulationSystem "1" -- "1..*" FlightProcess : runs >
+FlightProcess "1" -- "*" FlightProgressUpdate : sends >
+FlightProgressUpdate "*" -- "1" SimulationStep : belongs to >
+FlightProgressUpdate "1" -- "1" UDPDatagram : serialized as >
+
+FlightsLoggingServer "1" -- "1" UDPReceiver : contains >
+FlightsLoggingServer "1" -- "1" HTTPServer : contains >
+FlightsLoggingServer "1" -- "1" FlightProgressStore : maintains >
+FlightsLoggingServer "1" -- "*" UDPDatagram : receives >
+FlightsLoggingServer "1" -- "1" DatagramParser : uses >
+DatagramParser "1" -- "*" FlightProgressUpdate : parses >
+FlightProgressUpdate "1" -- "1" DatagramValidationResult : validated by >
+
+FlightsLoggingServer "1" -- "*" FlightLogFile : writes >
+FlightLogFile "1" o-- "*" FlightLogEntry : contains >
+FlightProgressUpdate "1" -- "1" FlightLogEntry : stored as >
+FlightLogFile "1" -- "*" LogFileWriteResult : produces >
+
+UDPReceiver "1" -- "*" FlightProgressUpdate : receives >
+FlightProgressStore "1" o-- "*" FlightProgressUpdate : stores latest >
+
+FlightControlOperator "1" -- "1" WebBrowser : uses >
+WebBrowser "1" -- "1" StatusPage : displays >
+StatusPage "1" -- "*" AJAXRequest : sends >
+AJAXRequest "*" -- "1" HTTPServer : requests data from >
+HTTPServer "1" -- "1" StatusPage : serves >
+HTTPServer "1" -- "1" FlightProgressStore : reads >
+StatusPage "1" -- "1" FlightProgressTable : renders >
+FlightProgressTable "1" o-- "*" FlightProgressRow : contains >
+FlightProgressRow "*" -- "1" FlightProgressUpdate : represents >
+
+' ============================================================
+' BOOTSTRAP
+' ============================================================
+
+class BootstrapProcess {
+    source
+}
+
+BootstrapProcess "1" -- "*" User : initializes >
+BootstrapProcess "1" -- "*" AirControlArea : initializes >
+BootstrapProcess "1" -- "*" Airport : initializes >
+BootstrapProcess "1" -- "*" AircraftModel : initializes >
+BootstrapProcess "1" -- "*" AircraftEngineModel : initializes >
+BootstrapProcess "1" -- "*" AirTransportCompany : initializes >
+BootstrapProcess "1" -- "*" CustomerCollaborator : initializes >
+
+@enduml
