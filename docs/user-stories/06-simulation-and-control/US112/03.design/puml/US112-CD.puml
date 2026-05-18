@@ -1,0 +1,201 @@
+@startuml
+title US112-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class GenerateMonthlyReportUI {
+        - month: int
+        - year: int
+        + requestData()
+        + displayResult(result: ReportGenerationResultDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class GenerateMonthlyReportController {
+        + generateMonthlyReport(request: GenerateMonthlyReportRequest): ReportGenerationResultDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class GenerateMonthlyReportService {
+        + generateMonthlyReport(request: GenerateMonthlyReportRequest): ReportGenerationResultDTO
+    }
+
+    class GenerateMonthlyReportRequest {
+        - month: int
+        - year: int
+    }
+
+    class ReportGenerationResultDTO {
+        - success: boolean
+        - reportType: String
+        - reportingPeriod: String
+        - filePath: String
+        - message: String
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class ReportingPeriodValidator {
+        + validate(month: int, year: int): ValidationResult
+    }
+
+    class ValidationResult {
+        - valid: boolean
+        - errors: List<String>
+    }
+}
+
+package "reporting.core" #DDDDDD {
+    class ReportGeneratorRegistry {
+        + getGenerator(reportType: ReportType): ReportGenerator
+    }
+
+    interface ReportGenerator {
+        + generate(period: ReportingPeriod): GeneratedReport
+    }
+
+    class ReportType {
+        - name: String
+    }
+
+    class ReportingPeriod {
+        - month: int
+        - year: int
+    }
+
+    class GeneratedReport {
+        - reportType: ReportType
+        - generatedAt: LocalDateTime
+        - content: String
+    }
+
+    class ReportTemplateProvider {
+        + getTemplate(reportType: ReportType): ReportTemplate
+    }
+
+    class ReportTemplate {
+        - header: String
+        - footer: String
+        - structure: String
+    }
+
+    class ReportBrandingProvider {
+        + getBranding(): ReportBranding
+    }
+
+    class ReportBranding {
+        - organizationName: String
+        - logoPath: String
+        - colorScheme: String
+    }
+
+    class ReportSectionBuilder {
+        + buildSection(title: String, content: String): ReportSection
+    }
+
+    class ReportGraphicBuilder {
+        + buildGraphic(data: Object, type: String): ReportGraphic
+    }
+
+    class ReportSection {
+        - title: String
+        - content: String
+    }
+
+    class ReportGraphic {
+        - title: String
+        - type: String
+        - data: Object
+    }
+
+    class ReportFileWriter {
+        + save(report: GeneratedReport): ReportFileReference
+    }
+
+    class ReportFileReference {
+        - filePath: String
+        - createdAt: LocalDateTime
+    }
+}
+
+package "reporting.monthly" #DDDDDD {
+    class MonthlyStatisticsReportGenerator {
+        + generate(period: ReportingPeriod): GeneratedReport
+    }
+
+    class MonthlyStatisticsDataCollector {
+        + collect(period: ReportingPeriod): MonthlyStatisticsData
+    }
+
+    class MonthlyStatisticsData {
+        - totalSimulations: int
+        - totalFlights: int
+        - totalSafetyViolations: int
+        - passedValidations: int
+        - failedValidations: int
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+GenerateMonthlyReportUI --> GenerateMonthlyReportController : uses >
+GenerateMonthlyReportController --> GenerateMonthlyReportService : uses >
+GenerateMonthlyReportService --> AuthorizationService : checks permission >
+GenerateMonthlyReportService --> ReportingPeriodValidator : validates >
+GenerateMonthlyReportService --> ReportGeneratorRegistry : resolves generator >
+GenerateMonthlyReportService --> ReportFileWriter : saves report >
+GenerateMonthlyReportService --> ReportGenerationResultDTO : returns >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+ReportGeneratorRegistry --> ReportGenerator : returns >
+ReportGenerator <|.. MonthlyStatisticsReportGenerator
+
+MonthlyStatisticsReportGenerator --> MonthlyStatisticsDataCollector : collects data >
+MonthlyStatisticsReportGenerator --> ReportTemplateProvider : gets template >
+MonthlyStatisticsReportGenerator --> ReportBrandingProvider : gets branding >
+MonthlyStatisticsReportGenerator --> ReportSectionBuilder : builds sections >
+MonthlyStatisticsReportGenerator --> ReportGraphicBuilder : builds graphics >
+MonthlyStatisticsReportGenerator --> GeneratedReport : creates >
+
+MonthlyStatisticsDataCollector --> MonthlyStatisticsData : returns >
+
+ReportTemplateProvider --> ReportTemplate : provides >
+ReportBrandingProvider --> ReportBranding : provides >
+ReportSectionBuilder --> ReportSection : creates >
+ReportGraphicBuilder --> ReportGraphic : creates >
+ReportFileWriter --> ReportFileReference : returns >
+GeneratedReport --> ReportType : has >
+
+@enduml

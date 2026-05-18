@@ -1,0 +1,90 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class ReportingPeriod {
+    month
+    year
+}
+
+class ReportType {
+    name
+}
+
+class MonthlyStatisticsReport {
+    reportId
+    generatedAt
+    filePath
+}
+
+class ReportTemplate {
+    header
+    footer
+    branding
+}
+
+class ReportBranding {
+    logo
+    colors
+    organizationName
+}
+
+class ReportSection {
+    title
+    content
+}
+
+class ReportGraphic {
+    title
+    type
+}
+
+class MonthlyStatisticsData {
+    totalSimulations
+    totalFlights
+    totalSafetyViolations
+    passedValidations
+    failedValidations
+}
+
+class ReportDataCollector {
+    strategy
+}
+
+class ReportFile {
+    filePath
+    format
+}
+
+class ReportGenerationResult {
+    success
+    message
+}
+
+FlightControlOperator "1" -- "*" MonthlyStatisticsReport : requests >
+MonthlyStatisticsReport "1" -- "1" ReportingPeriod : covers >
+MonthlyStatisticsReport "1" -- "1" ReportType : has >
+MonthlyStatisticsReport "1" -- "1" ReportTemplate : uses >
+MonthlyStatisticsReport "1" -- "1" MonthlyStatisticsData : summarizes >
+MonthlyStatisticsReport "1" o-- "*" ReportSection : contains >
+MonthlyStatisticsReport "1" o-- "*" ReportGraphic : contains >
+MonthlyStatisticsReport "1" -- "1" ReportFile : saved as >
+MonthlyStatisticsReport "1" -- "1" ReportGenerationResult : produces >
+
+ReportTemplate "1" -- "1" ReportBranding : applies >
+ReportDataCollector "1" -- "1" ReportType : collects for >
+ReportDataCollector "1" -- "1" MonthlyStatisticsData : produces >
+
+@enduml

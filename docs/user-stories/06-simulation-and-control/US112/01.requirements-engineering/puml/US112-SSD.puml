@@ -1,0 +1,74 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":System" as System
+participant ":Monthly Report Generator" as MonthlyReportGenerator
+participant ":Monthly Statistics Data Source" as DataSource
+participant ":Report Template" as ReportTemplate
+participant ":Report File" as ReportFile
+
+activate FCO
+
+FCO -> System : Requests monthly statistics report
+
+activate System
+System --> FCO : Requests month and year
+deactivate System
+
+FCO -> System : Provides month and year
+
+activate System
+System --> System : Check if FCO is authenticated and authorized
+System --> System : Validate month and year
+
+alt month and year are valid
+
+    System -> MonthlyReportGenerator : Generate monthly report(month, year)
+
+    activate MonthlyReportGenerator
+
+    MonthlyReportGenerator -> DataSource : Collect monthly statistics(month, year)
+
+    activate DataSource
+    DataSource --> MonthlyReportGenerator : Monthly statistics data
+    deactivate DataSource
+
+    MonthlyReportGenerator -> ReportTemplate : Apply common branding and structure
+
+    activate ReportTemplate
+    ReportTemplate --> MonthlyReportGenerator : Branded report structure
+    deactivate ReportTemplate
+
+    MonthlyReportGenerator --> MonthlyReportGenerator : Build report sections
+    MonthlyReportGenerator --> MonthlyReportGenerator : Build tables and graphics
+
+    MonthlyReportGenerator -> ReportFile : Save report to file
+
+    activate ReportFile
+    ReportFile --> MonthlyReportGenerator : Report file reference
+    deactivate ReportFile
+
+    MonthlyReportGenerator --> System : Monthly report generated
+    deactivate MonthlyReportGenerator
+
+    System --> FCO : Display report generation confirmation
+
+else month or year are invalid
+
+    System --> FCO : Display invalid reporting period message
+
+else data collection or file generation fails
+
+    System --> FCO : Display report generation error
+
+end
+
+deactivate System
+deactivate FCO
+
+@enduml

@@ -1,0 +1,147 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "GenerateMonthlyReportUI" as UI
+participant "GenerateMonthlyReportController" as CTRL
+participant "GenerateMonthlyReportService" as Service
+participant "AuthorizationService" as AuthzService
+participant "ReportingPeriodValidator" as PeriodValidator
+participant "ReportGeneratorRegistry" as Registry
+participant "MonthlyStatisticsReportGenerator" as Generator
+participant "MonthlyStatisticsDataCollector" as DataCollector
+participant "ReportTemplateProvider" as TemplateProvider
+participant "ReportBrandingProvider" as BrandingProvider
+participant "ReportSectionBuilder" as SectionBuilder
+participant "ReportGraphicBuilder" as GraphicBuilder
+participant "ReportFileWriter" as FileWriter
+
+activate FCO
+
+FCO -> UI : Requests monthly statistics report
+
+activate UI
+UI --> FCO : Requests month and year
+deactivate UI
+
+FCO -> UI : Provides month and year
+
+activate UI
+UI -> CTRL : generateMonthlyReport(request)
+
+activate CTRL
+CTRL -> Service : generateMonthlyReport(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, GENERATE_MONTHLY_REPORT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt FCO is authorized
+
+    Service -> PeriodValidator : validate(month, year)
+
+    activate PeriodValidator
+    PeriodValidator --> Service : ValidationResult
+    deactivate PeriodValidator
+
+    alt reporting period is valid
+
+        Service -> Registry : getGenerator(MONTHLY_STATISTICS)
+
+        activate Registry
+        Registry --> Service : MonthlyStatisticsReportGenerator
+        deactivate Registry
+
+        Service -> Generator : generate(reportingPeriod)
+
+        activate Generator
+
+        Generator -> DataCollector : collect(reportingPeriod)
+
+        activate DataCollector
+        DataCollector --> Generator : MonthlyStatisticsData
+        deactivate DataCollector
+
+        Generator -> TemplateProvider : getTemplate(MONTHLY_STATISTICS)
+
+        activate TemplateProvider
+        TemplateProvider --> Generator : ReportTemplate
+        deactivate TemplateProvider
+
+        Generator -> BrandingProvider : getBranding()
+
+        activate BrandingProvider
+        BrandingProvider --> Generator : ReportBranding
+        deactivate BrandingProvider
+
+        Generator -> SectionBuilder : buildSection("Executive Summary", data)
+
+        activate SectionBuilder
+        SectionBuilder --> Generator : ReportSection
+        deactivate SectionBuilder
+
+        Generator -> SectionBuilder : buildSection("Monthly Statistics", data)
+
+        activate SectionBuilder
+        SectionBuilder --> Generator : ReportSection
+        deactivate SectionBuilder
+
+        Generator -> GraphicBuilder : buildGraphic(data, "monthly-statistics")
+
+        activate GraphicBuilder
+        GraphicBuilder --> Generator : ReportGraphic
+        deactivate GraphicBuilder
+
+        alt monthly data exists
+
+            Generator --> Generator : Build populated monthly report
+
+        else no monthly data exists
+
+            Generator --> Generator : Build no-data monthly report
+
+        end
+
+        Generator --> Service : GeneratedReport
+        deactivate Generator
+
+        Service -> FileWriter : save(generatedReport)
+
+        activate FileWriter
+        FileWriter --> Service : ReportFileReference
+        deactivate FileWriter
+
+        Service --> CTRL : ReportGenerationResultDTO(success)
+        CTRL --> UI : Monthly report generated
+        UI --> FCO : Display report file reference
+
+    else reporting period is invalid
+
+        Service --> CTRL : Report generation failed
+        CTRL --> UI : Error
+        UI --> FCO : Display invalid reporting period message
+
+    end
+
+else FCO is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> FCO : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate FCO
+
+@enduml
