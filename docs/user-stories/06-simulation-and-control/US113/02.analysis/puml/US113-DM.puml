@@ -1,0 +1,100 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class SimulationSystem {
+    simulationId
+    status
+}
+
+class FlightProcess {
+    processId
+    flightId
+    status
+}
+
+class SimulationStep {
+    index
+    timestamp
+}
+
+class FlightProgressUpdate {
+    flightId
+    aircraftId
+    simulationStep
+    timestamp
+    latitude
+    longitude
+    altitude
+    velocityVector
+    status
+}
+
+class UDPDatagram {
+    sourceAddress
+    sourcePort
+    payload
+}
+
+class FlightsLoggingServer {
+    host
+    port
+    status
+}
+
+class DatagramParser {
+    format
+}
+
+class DatagramValidationResult {
+    valid
+    errors
+}
+
+class FlightLogFile {
+    flightId
+    filePath
+}
+
+class FlightLogEntry {
+    simulationStep
+    timestamp
+    position
+    velocityVector
+    status
+}
+
+class LogFileWriteResult {
+    success
+    errorMessage
+}
+
+FlightControlOperator "1" -- "*" SimulationSystem : monitors >
+SimulationSystem "1" -- "1..*" FlightProcess : runs >
+FlightProcess "1" -- "*" FlightProgressUpdate : sends >
+FlightProgressUpdate "*" -- "1" SimulationStep : belongs to >
+FlightProgressUpdate "1" -- "1" UDPDatagram : serialized as >
+
+FlightsLoggingServer "1" -- "*" UDPDatagram : receives >
+FlightsLoggingServer "1" -- "1" DatagramParser : uses >
+DatagramParser "1" -- "*" FlightProgressUpdate : parses >
+FlightProgressUpdate "1" -- "1" DatagramValidationResult : validated by >
+
+FlightsLoggingServer "1" -- "*" FlightLogFile : writes >
+FlightLogFile "1" o-- "*" FlightLogEntry : contains >
+FlightProgressUpdate "1" -- "1" FlightLogEntry : stored as >
+FlightLogFile "1" -- "*" LogFileWriteResult : produces >
+
+@enduml

@@ -1,0 +1,141 @@
+@startuml
+title US113-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.process" #DDDDDD {
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        - aircraftId: String
+        + executeStep(step: SimulationStep)
+        + sendProgressUpdate(step: SimulationStep)
+    }
+}
+
+package "c.simulation.logging.client" #DDDDDD {
+    class FlightProgressUpdate {
+        - simulationId: String
+        - flightId: String
+        - aircraftId: String
+        - stepIndex: int
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+        - velocityX: double
+        - velocityY: double
+        - velocityZ: double
+        - status: String
+    }
+
+    class FlightProgressDatagramBuilder {
+        + build(update: FlightProgressUpdate): UDPDatagramPayload
+    }
+
+    class UDPFlightProgressClient {
+        - serverHost: String
+        - serverPort: int
+        + send(payload: UDPDatagramPayload): UDPSendResult
+    }
+
+    class UDPDatagramPayload {
+        - content: String
+    }
+
+    class UDPSendResult {
+        - success: boolean
+        - errorMessage: String
+    }
+}
+
+package "flights.logging.server" #DDDDDD {
+    class FlightsLoggingServer {
+        - host: String
+        - udpPort: int
+        - running: boolean
+        + start()
+        + stop()
+    }
+
+    class UDPDatagramReceiver {
+        + receive(): ReceivedUDPDatagram
+    }
+
+    class ReceivedUDPDatagram {
+        - sourceAddress: String
+        - sourcePort: int
+        - payload: String
+    }
+
+    class FlightProgressDatagramParser {
+        + parse(datagram: ReceivedUDPDatagram): FlightProgressUpdate
+    }
+
+    class FlightProgressDatagramValidator {
+        + validate(update: FlightProgressUpdate): DatagramValidationResult
+    }
+
+    class DatagramValidationResult {
+        - valid: boolean
+        - errors: List<String>
+    }
+
+    class FlightLogFileResolver {
+        + resolveFile(flightId: String): FlightLogFile
+    }
+
+    class FlightLogFileWriter {
+        + append(file: FlightLogFile, update: FlightProgressUpdate): FileWriteResult
+    }
+
+    class FlightLogFile {
+        - flightId: String
+        - filePath: String
+    }
+
+    class FileWriteResult {
+        - success: boolean
+        - errorMessage: String
+    }
+
+    class FlightsLoggingServerLogger {
+        + logInfo(message: String)
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+package "c.simulation.time" #DDDDDD {
+    class SimulationStep {
+        - index: int
+        - timestamp: long
+    }
+}
+
+FlightProcess --> SimulationStep : executes >
+FlightProcess --> FlightProgressUpdate : creates >
+FlightProcess --> FlightProgressDatagramBuilder : builds datagram >
+FlightProcess --> UDPFlightProgressClient : sends >
+
+FlightProgressDatagramBuilder --> UDPDatagramPayload : creates >
+UDPFlightProgressClient --> UDPSendResult : returns >
+
+FlightsLoggingServer --> UDPDatagramReceiver : receives >
+FlightsLoggingServer --> FlightProgressDatagramParser : parses >
+FlightsLoggingServer --> FlightProgressDatagramValidator : validates >
+FlightsLoggingServer --> FlightLogFileResolver : resolves file >
+FlightsLoggingServer --> FlightLogFileWriter : writes >
+FlightsLoggingServer --> FlightsLoggingServerLogger : logs >
+
+UDPDatagramReceiver --> ReceivedUDPDatagram : returns >
+FlightProgressDatagramParser --> FlightProgressUpdate : creates >
+FlightProgressDatagramValidator --> DatagramValidationResult : returns >
+FlightLogFileResolver --> FlightLogFile : returns >
+FlightLogFileWriter --> FileWriteResult : returns >
+FlightLogFileWriter --> FlightLogFile : appends to >
+
+@enduml

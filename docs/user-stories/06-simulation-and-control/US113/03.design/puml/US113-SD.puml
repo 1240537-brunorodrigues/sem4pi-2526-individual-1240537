@@ -1,0 +1,131 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "FlightProcess" as FlightProcess
+participant "FlightProgressUpdate" as ProgressUpdate
+participant "FlightProgressDatagramBuilder" as DatagramBuilder
+participant "UDPFlightProgressClient" as UDPClient
+participant "FlightsLoggingServer" as LoggingServer
+participant "UDPDatagramReceiver" as DatagramReceiver
+participant "FlightProgressDatagramParser" as Parser
+participant "FlightProgressDatagramValidator" as Validator
+participant "FlightLogFileResolver" as FileResolver
+participant "FlightLogFileWriter" as FileWriter
+participant "FlightsLoggingServerLogger" as Logger
+
+activate LoggingServer
+
+LoggingServer -> DatagramReceiver : listen(udpPort)
+
+activate DatagramReceiver
+DatagramReceiver --> LoggingServer : UDP listener ready
+deactivate DatagramReceiver
+
+activate FlightProcess
+
+loop for each simulation step while flight is running
+
+    FlightProcess --> FlightProcess : Execute current simulation step
+
+    FlightProcess -> ProgressUpdate ** : FlightProgressUpdate(flightId, aircraftId,\nstep, timestamp, position,\nvelocityVector, status)
+
+    activate ProgressUpdate
+    ProgressUpdate --> FlightProcess : progressUpdate
+    deactivate ProgressUpdate
+
+    FlightProcess -> DatagramBuilder : build(progressUpdate)
+
+    activate DatagramBuilder
+    DatagramBuilder --> FlightProcess : udpDatagramPayload
+    deactivate DatagramBuilder
+
+    FlightProcess -> UDPClient : send(udpDatagramPayload)
+
+    activate UDPClient
+    UDPClient --> LoggingServer : UDP datagram
+    UDPClient --> FlightProcess : send result
+    deactivate UDPClient
+
+    LoggingServer -> DatagramReceiver : receive()
+
+    activate DatagramReceiver
+    DatagramReceiver --> LoggingServer : receivedUDPDatagram
+    deactivate DatagramReceiver
+
+    LoggingServer -> Parser : parse(receivedUDPDatagram)
+
+    activate Parser
+    Parser --> LoggingServer : parsedProgressUpdate / parse error
+    deactivate Parser
+
+    alt datagram parsed successfully
+
+        LoggingServer -> Validator : validate(parsedProgressUpdate)
+
+        activate Validator
+        Validator --> LoggingServer : validationResult
+        deactivate Validator
+
+        alt datagram is valid
+
+            LoggingServer -> FileResolver : resolveFile(parsedProgressUpdate.flightId)
+
+            activate FileResolver
+            FileResolver --> LoggingServer : flightLogFile
+            deactivate FileResolver
+
+            LoggingServer -> FileWriter : append(flightLogFile, parsedProgressUpdate)
+
+            activate FileWriter
+            FileWriter --> LoggingServer : FileWriteResult
+            deactivate FileWriter
+
+            alt file write succeeds
+
+                LoggingServer -> Logger : logInfo("Flight progress update stored")
+
+                activate Logger
+                Logger --> LoggingServer : logged
+                deactivate Logger
+
+            else file write fails
+
+                LoggingServer -> Logger : logError("Could not write flight log file")
+
+                activate Logger
+                Logger --> LoggingServer : logged
+                deactivate Logger
+
+            end
+
+        else datagram is invalid
+
+            LoggingServer -> Logger : logWarning("Invalid flight progress datagram")
+
+            activate Logger
+            Logger --> LoggingServer : logged
+            deactivate Logger
+
+        end
+
+    else datagram parse fails
+
+        LoggingServer -> Logger : logWarning("Malformed UDP datagram ignored")
+
+        activate Logger
+        Logger --> LoggingServer : logged
+        deactivate Logger
+
+    end
+
+end
+
+deactivate FlightProcess
+deactivate LoggingServer
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":Simulation System" as SimulationSystem
+participant ":Flight Process" as FlightProcess
+participant ":Flights Logging Server" as LoggingServer
+participant ":Flight Log File" as FlightLogFile
+
+activate FCO
+
+FCO -> SimulationSystem : Starts or monitors simulated flights
+
+activate SimulationSystem
+SimulationSystem -> LoggingServer : Start UDP Flights Logging Server
+
+activate LoggingServer
+LoggingServer --> SimulationSystem : UDP server listening
+deactivate LoggingServer
+
+loop For each simulation step while flight is running
+
+    SimulationSystem -> FlightProcess : Execute simulation step
+
+    activate FlightProcess
+    FlightProcess --> FlightProcess : Build flight progress update
+    FlightProcess -> LoggingServer : Send UDP datagram with flight progress
+
+    activate LoggingServer
+    LoggingServer --> LoggingServer : Receive UDP datagram
+    LoggingServer --> LoggingServer : Parse and validate datagram
+
+    alt datagram is valid
+
+        LoggingServer -> FlightLogFile : Append update to flight-specific file
+
+        activate FlightLogFile
+        FlightLogFile --> LoggingServer : Update stored
+        deactivate FlightLogFile
+
+    else datagram is malformed
+
+        LoggingServer --> LoggingServer : Reject or ignore datagram safely
+
+    end
+
+    deactivate LoggingServer
+    deactivate FlightProcess
+
+end
+
+SimulationSystem --> FCO : Simulated flight progress logged remotely
+
+deactivate SimulationSystem
+deactivate FCO
+
+@enduml
