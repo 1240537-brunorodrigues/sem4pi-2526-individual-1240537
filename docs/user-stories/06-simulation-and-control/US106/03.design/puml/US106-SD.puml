@@ -1,0 +1,154 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "ParentSimulationProcess" as ParentProcess
+participant "ParentSynchronizationContext" as SyncContext
+participant "MutexManager" as MutexManager
+participant "ConditionVariableManager" as CondManager
+participant "ParentThreadManager" as ThreadManager
+participant "ThreadLifecycleManager" as LifecycleManager
+participant "ThreadRegistry" as ThreadRegistry
+participant "SafetyViolationDetectionThread" as SafetyThread
+participant "ReportGenerationThread" as ReportThread
+participant "SimulationLogger" as Logger
+
+activate ParentProcess
+
+ParentProcess -> SyncContext : create()
+
+activate SyncContext
+SyncContext --> ParentProcess : synchronization context
+deactivate SyncContext
+
+ParentProcess -> MutexManager : initializeMutex(sharedDataMutex)
+
+activate MutexManager
+MutexManager --> ParentProcess : initialized / error
+deactivate MutexManager
+
+ParentProcess -> MutexManager : initializeMutex(reportMutex)
+
+activate MutexManager
+MutexManager --> ParentProcess : initialized / error
+deactivate MutexManager
+
+ParentProcess -> CondManager : initialize(violationCondition)
+
+activate CondManager
+CondManager --> ParentProcess : initialized / error
+deactivate CondManager
+
+ParentProcess -> CondManager : initialize(shutdownCondition)
+
+activate CondManager
+CondManager --> ParentProcess : initialized / error
+deactivate CondManager
+
+alt synchronization primitives initialized
+
+    ParentProcess -> ThreadManager : createRequiredThreads(syncContext)
+
+    activate ThreadManager
+
+    ThreadManager -> LifecycleManager : createThread(SafetyViolationDetectionThread.run)
+
+    activate LifecycleManager
+    LifecycleManager --> ThreadManager : safetyThreadId / error
+    deactivate LifecycleManager
+
+    alt safety thread created
+
+        ThreadManager -> ThreadRegistry : registerThread(safetyThreadId, "Safety Violation Detection")
+
+        activate ThreadRegistry
+        ThreadRegistry --> ThreadManager : registered
+        deactivate ThreadRegistry
+
+        ThreadManager -> SafetyThread : start()
+
+        activate SafetyThread
+        SafetyThread --> SafetyThread : scan shared memory loop initialized
+        SafetyThread --> ThreadManager : running
+        deactivate SafetyThread
+
+        ThreadManager -> LifecycleManager : createThread(ReportGenerationThread.run)
+
+        activate LifecycleManager
+        LifecycleManager --> ThreadManager : reportThreadId / error
+        deactivate LifecycleManager
+
+        alt report thread created
+
+            ThreadManager -> ThreadRegistry : registerThread(reportThreadId, "Report Generation")
+
+            activate ThreadRegistry
+            ThreadRegistry --> ThreadManager : registered
+            deactivate ThreadRegistry
+
+            ThreadManager -> ReportThread : start()
+
+            activate ReportThread
+            ReportThread --> ReportThread : report generation loop initialized
+            ReportThread --> ThreadManager : running
+            deactivate ReportThread
+
+            ThreadManager --> ParentProcess : required threads created
+
+            ParentProcess -> Logger : logInfo("Function-specific threads initialized")
+
+            activate Logger
+            Logger --> ParentProcess : logged
+            deactivate Logger
+
+        else report thread creation fails
+
+            ThreadManager -> LifecycleManager : requestStop(safetyThreadId)
+
+            activate LifecycleManager
+            LifecycleManager --> ThreadManager : stop requested
+            deactivate LifecycleManager
+
+            ThreadManager --> ParentProcess : thread creation failed
+
+            ParentProcess -> Logger : logError("Report thread creation failed")
+
+            activate Logger
+            Logger --> ParentProcess : logged
+            deactivate Logger
+
+        end
+
+    else safety thread creation fails
+
+        ThreadManager --> ParentProcess : thread creation failed
+
+        ParentProcess -> Logger : logError("Safety detection thread creation failed")
+
+        activate Logger
+        Logger --> ParentProcess : logged
+        deactivate Logger
+
+    end
+
+    deactivate ThreadManager
+
+else synchronization primitive initialization fails
+
+    ParentProcess -> Logger : logError("Thread synchronization initialization failed")
+
+    activate Logger
+    Logger --> ParentProcess : logged
+    deactivate Logger
+
+    ParentProcess --> ParentProcess : abort thread initialization
+
+end
+
+deactivate ParentProcess
+
+@enduml

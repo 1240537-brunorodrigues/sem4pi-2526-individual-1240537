@@ -1,0 +1,83 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class ParentSimulationProcess {
+    processId
+    status
+}
+
+class DedicatedThread {
+    threadId
+    responsibility
+    status
+}
+
+class SafetyViolationDetectionThread {
+    scanInterval
+}
+
+class ReportGenerationThread {
+    reportStatus
+}
+
+class AdditionalFunctionThread {
+    functionName
+}
+
+class SharedMemorySegment {
+    name
+    initialized
+}
+
+class SharedSimulationData {
+    aircraftPositions
+    safetyViolations
+    simulationStatus
+}
+
+class Mutex {
+    name
+    locked
+}
+
+class ConditionVariable {
+    name
+    waitingThreads
+}
+
+class ThreadLifecycle {
+    created
+    running
+    stopped
+}
+
+class ThreadCreationResult {
+    success
+    errorMessage
+}
+
+ParentSimulationProcess "1" -- "2..*" DedicatedThread : creates >
+DedicatedThread <|-- SafetyViolationDetectionThread
+DedicatedThread <|-- ReportGenerationThread
+DedicatedThread <|-- AdditionalFunctionThread
+
+ParentSimulationProcess "1" -- "1" SharedMemorySegment : uses >
+SharedMemorySegment "1" -- "1" SharedSimulationData : contains >
+
+DedicatedThread "*" -- "1" ThreadLifecycle : has >
+DedicatedThread "*" -- "*" Mutex : uses >
+DedicatedThread "*" -- "*" ConditionVariable : waits/signals >
+ParentSimulationProcess "1" -- "*" ThreadCreationResult : receives >
+
+SafetyViolationDetectionThread "1" -- "1" SharedSimulationData : scans >
+ReportGenerationThread "1" -- "1" SharedSimulationData : reads >
+
+@enduml

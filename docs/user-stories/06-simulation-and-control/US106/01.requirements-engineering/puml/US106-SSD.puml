@@ -1,0 +1,54 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "PO" as PO
+participant ":System" as System
+participant ":Parent Simulation Process" as ParentProcess
+participant ":Safety Detection Thread" as SafetyThread
+participant ":Report Generation Thread" as ReportThread
+
+activate PO
+
+PO -> System : Requests function-specific parent process threads
+
+activate System
+System -> ParentProcess : Initialize parent process threading model
+
+activate ParentProcess
+ParentProcess --> ParentProcess : Initialize mutexes
+ParentProcess --> ParentProcess : Initialize condition variables
+
+ParentProcess -> SafetyThread : Create safety violation detection thread
+
+activate SafetyThread
+SafetyThread --> SafetyThread : Prepare to scan shared memory
+SafetyThread --> ParentProcess : Safety thread initialized
+deactivate SafetyThread
+
+ParentProcess -> ReportThread : Create report generation thread
+
+activate ReportThread
+ReportThread --> ReportThread : Prepare to compile simulation results
+ReportThread --> ParentProcess : Report thread initialized
+deactivate ReportThread
+
+ParentProcess --> ParentProcess : Register thread responsibilities
+
+alt all required threads created
+    ParentProcess --> System : Threading model initialized
+    System --> PO : Dedicated parent process threads created successfully
+else thread creation fails
+    ParentProcess --> ParentProcess : Clean up created threads and synchronization primitives
+    ParentProcess --> System : Threading model initialization failed
+    System --> PO : Display thread initialization error
+end
+
+deactivate ParentProcess
+deactivate System
+deactivate PO
+
+@enduml
