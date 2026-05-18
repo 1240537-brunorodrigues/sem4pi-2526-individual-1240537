@@ -8,71 +8,66 @@ autonumber
 actor "Flight Control Operator" as FCO
 participant ":System" as System
 participant ":Report Generation Thread" as ReportThread
-participant ":Shared Memory" as SharedMemory
-participant ":Final Simulation Report" as FinalReport
+participant ":Simulation Data" as SimulationData
+participant ":Simulation Report" as Report
+participant ":Report File" as ReportFile
 
 activate FCO
 
-FCO -> System : Requests final simulation report
+FCO -> System : Requests simulation report
 
 activate System
 System --> System : Check if FCO is authenticated and authorized
 System --> System : Validate selected simulation
-System --> System : Check if simulation is in a final state
 
-alt simulation is finished, failed or terminated
+alt simulation exists
 
-    System -> ReportThread : Request final report generation
+    System -> ReportThread : Request simulation report summary
 
     activate ReportThread
 
-    ReportThread -> SharedMemory : Read final simulation metadata and configuration
-    activate SharedMemory
-    SharedMemory --> ReportThread : Final metadata and configuration
-    deactivate SharedMemory
+    ReportThread -> SimulationData : Read total number of flights
+    activate SimulationData
+    SimulationData --> ReportThread : Total number of flights
+    deactivate SimulationData
 
-    ReportThread -> SharedMemory : Read final flight process statuses
-    activate SharedMemory
-    SharedMemory --> ReportThread : Final process statuses
-    deactivate SharedMemory
+    ReportThread -> SimulationData : Read flight execution statuses
+    activate SimulationData
+    SimulationData --> ReportThread : Execution statuses
+    deactivate SimulationData
 
-    ReportThread -> SharedMemory : Read complete aircraft position history
-    activate SharedMemory
-    SharedMemory --> ReportThread : Complete position history
-    deactivate SharedMemory
+    ReportThread -> SimulationData : Read safety violation timestamps and positions
+    activate SimulationData
+    SimulationData --> ReportThread : Safety violation data
+    deactivate SimulationData
 
-    ReportThread -> SharedMemory : Read safety violation events
-    activate SharedMemory
-    SharedMemory --> ReportThread : Safety violation events
-    deactivate SharedMemory
+    ReportThread -> SimulationData : Read pass/fail validation result
+    activate SimulationData
+    SimulationData --> ReportThread : Validation result
+    deactivate SimulationData
 
-    ReportThread -> SharedMemory : Read environmental influence data
-    activate SharedMemory
-    SharedMemory --> ReportThread : Environmental influence data
-    deactivate SharedMemory
+    ReportThread -> Report : Compile simulation summary report
+    activate Report
+    Report --> ReportThread : Report compiled
+    deactivate Report
 
-    ReportThread -> SharedMemory : Read warnings and errors
-    activate SharedMemory
-    SharedMemory --> ReportThread : Warnings and errors
-    deactivate SharedMemory
+    ReportThread -> ReportFile : Store report in file
+    activate ReportFile
+    ReportFile --> ReportThread : Report file saved
+    deactivate ReportFile
 
-    ReportThread -> FinalReport : Compile final simulation report
-    activate FinalReport
-    FinalReport --> ReportThread : Final report compiled
-    deactivate FinalReport
-
-    ReportThread --> System : Final simulation report
+    ReportThread --> System : Report file reference
     deactivate ReportThread
 
-    System --> FCO : Display final simulation report
+    System --> FCO : Display simulation report summary
 
-else simulation is still running
+else simulation does not exist
 
-    System --> FCO : Display report unavailable until simulation ends
+    System --> FCO : Display simulation not found message
 
-else simulation does not exist or cannot be reported
+else report generation or storage fails
 
-    System --> FCO : Display final report generation error
+    System --> FCO : Display report generation/storage error
 
 end
 

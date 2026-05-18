@@ -4,11 +4,11 @@
 
 ### 1.1. User Story Description
 
-As a simulation engine, I want to incorporate environmental influences into the simulation so that flight behaviour reflects relevant weather and environmental conditions.
+As a PO, I want the simulation to incorporate environmental factors such as wind into the simulation, so that the flight paths become more realistic and adapt to dynamic conditions.
 
-This functionality allows the simulation to use environmental data while flights are being executed. Environmental influences may affect aircraft movement, fuel consumption, safety evaluation or simulation reporting.
+This functionality adds an environment thread to the parent simulation process. The parent process must spawn this additional thread at simulation start.
 
-The simulation must retrieve or receive environmental data, make it available to the simulation components and apply the relevant influence calculations during each simulation time step.
+The environment thread is responsible for loading environmental configuration from a weather service, particularly wind speed and wind direction. During simulation execution, the environment thread writes environmental data into the shared memory segment at each time step, so that flight processes and other simulation components can use it consistently.
 
 ---
 
@@ -31,35 +31,27 @@ No additional client clarifications are currently available.
 
 ### 1.3. Acceptance Criteria
 
-* **AC1:** The simulation must be able to use environmental data during execution.
-* **AC2:** Environmental data must be available before it is applied to flight movement calculations.
-* **AC3:** Environmental data must be associated with a simulation area, flight plan, time step or relevant air control area.
-* **AC4:** The system must validate environmental data before applying it.
-* **AC5:** Invalid environmental data must not be applied to flight calculations.
-* **AC6:** Environmental influences may affect aircraft movement.
-* **AC7:** Environmental influences may affect fuel consumption.
-* **AC8:** Environmental influences may affect safety evaluation.
-* **AC9:** Environmental influences must be applied consistently within a simulation time step.
-* **AC10:** Flight processes must access environmental data safely.
-* **AC11:** Environmental data shared between parent and child processes must be stored in shared memory or provided through an equivalent controlled mechanism.
-* **AC12:** Updates to environmental data must not corrupt simulation state.
-* **AC13:** Environmental influence application must be logged or reflected in the simulation report where relevant.
-* **AC14:** If environmental data is missing, the system must either use default conditions or report the missing data according to the defined simulation policy.
-* **AC15:** This functionality must be implemented consistently with the C simulation component.
-
----
+* **AC1:** The parent process must spawn an additional environment thread at simulation start.
+* **AC2:** The environment thread must load environmental configuration from a weather service.
+* **AC3:** The environmental configuration must include wind speed.
+* **AC4:** The environmental configuration must include wind direction.
+* **AC5:** Environmental data must be validated before being written to shared memory.
+* **AC6:** The environment thread must write environment data into the shared memory segment at each simulation time step.
+* **AC7:** Flight processes must be able to read the current environmental data from shared memory.
+* **AC8:** The environmental data must be associated with the corresponding simulation time step.
+* **AC9:** Environmental data updates must be synchronized with the step-by-step simulation progression.
+* **AC10:** Missing or invalid environmental data must be handled safely.
+* **AC11:** Environmental data access must not corrupt shared simulation state.
+* **AC12:** Environmental influence information should be available for report generation when relevant.
+* **AC13:** This functionality must be implemented consistently with the C simulation component.
 
 ### 1.4. Found out Dependencies
 
-* This user story depends on US041 and US042, because weather data may be registered or imported.
-* This user story depends on US043, because weather data may be consulted by day and air control area.
-* This user story depends on US082, because flight plans may include weather data.
+* This user story depends on US041, US042 and US043, because environmental configuration is loaded from the weather service.
 * This user story depends on US105, because the hybrid simulation environment and shared memory must exist.
-* This user story depends on US108, because environmental influences should be applied consistently per time step.
-* This user story is related to US100, because it extends the base simulation.
-* This user story is related to US101, because environmental influences may affect movement updates.
-* This user story is related to US102, because environmental conditions may affect safety violation detection.
-* This user story is related to US109 and US111, because reports should include relevant environmental effects.
+* This user story depends on US106, because the parent process supports function-specific threads and this US adds an environment thread.
+* This user story depends on US108, because environmental data must be written at each simulation time step.
+* This user story is related to US109 and US111, because reports may include environmental influence information.
 
 ---
 

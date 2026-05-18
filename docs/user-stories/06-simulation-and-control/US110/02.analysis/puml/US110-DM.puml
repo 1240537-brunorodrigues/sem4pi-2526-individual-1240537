@@ -84,6 +84,20 @@ class SimulationReport {
     environmentalSummary
 }
 
+class EnvironmentThread {
+    threadId
+    status
+}
+
+class WeatherService {
+    source
+}
+
+class WindConfiguration {
+    windSpeed
+    windDirection
+}
+
 SimulationEngine "1" -- "1" ParentSimulationProcess : controls >
 ParentSimulationProcess "1" -- "1..*" FlightProcess : coordinates >
 ParentSimulationProcess "1" -- "1" EnvironmentalDataSource : retrieves from >
@@ -101,5 +115,11 @@ EnvironmentalInfluenceModel "1" -- "1" AdjustedAircraftState : produces >
 
 ParentSimulationProcess "1" -- "1" EnvironmentalPolicy : applies >
 SimulationReport "1" o-- "*" EnvironmentalData : summarizes >
+
+ParentSimulationProcess "1" -- "1" EnvironmentThread : spawns >
+EnvironmentThread "1" -- "1" WeatherService : loads from >
+WeatherService "1" -- "*" EnvironmentalData : provides >
+EnvironmentalData "1" -- "1" WindConfiguration : includes >
+EnvironmentThread "1" -- "1" SharedMemorySegment : writes to >
 
 @enduml

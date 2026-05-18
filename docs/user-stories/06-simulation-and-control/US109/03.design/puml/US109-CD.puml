@@ -143,6 +143,20 @@ package "c.simulation.report" #DDDDDD {
     class SimulationReportFormatter {
         + format(report: SimulationReport): String
     }
+    class ReportFileWriter {
+        + save(report: SimulationReport): ReportFileReference
+    }
+
+    class ReportFileReference {
+        - filePath: String
+        - generatedAt: long
+    }
+
+    class VelocityVectorDTO {
+        - x: double
+        - y: double
+        - z: double
+    }
 }
 
 package "c.simulation.shared" #DDDDDD {
@@ -201,6 +215,9 @@ User "1" o-- "1..*" Role
 Role "1" o-- "*" Permission
 User *-- Email
 
+ReportGenerationThread --> ReportFileWriter : saves report >
+ReportFileWriter --> ReportFileReference : returns >
+SafetyViolationDTO "1" o-- "*" VelocityVectorDTO : includes >
 ReportGenerationThread --> SharedMemoryAccessor : reads >
 ReportGenerationThread --> ReportDataBuilder : builds >
 ReportDataBuilder --> SimulationReport : creates >

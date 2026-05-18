@@ -9,50 +9,67 @@ actor "Flight Control Operator" as FCO
 participant ":System" as System
 participant ":Report Generation Thread" as ReportThread
 participant ":Shared Memory" as SharedMemory
-participant ":Simulation Report" as Report
+participant ":Final Simulation Report" as Report
+participant ":Report File" as ReportFile
 
 activate FCO
 
-FCO -> System : Requests simulation report
+FCO -> System : Requests final simulation report
 
 activate System
 System --> System : Check if FCO is authenticated and authorized
 System --> System : Validate selected simulation
-System -> ReportThread : Request report generation
+System --> System : Check if simulation has concluded
 
-activate ReportThread
-ReportThread -> SharedMemory : Read simulation configuration
-activate SharedMemory
-SharedMemory --> ReportThread : Simulation configuration
-deactivate SharedMemory
+alt simulation has concluded
 
-ReportThread -> SharedMemory : Read included flights and process statuses
-activate SharedMemory
-SharedMemory --> ReportThread : Flights and process statuses
-deactivate SharedMemory
+    System -> ReportThread : Request final report generation
 
-ReportThread -> SharedMemory : Read aircraft position history
-activate SharedMemory
-SharedMemory --> ReportThread : Position history
-deactivate SharedMemory
+    activate ReportThread
 
-ReportThread -> SharedMemory : Read safety violation events
-activate SharedMemory
-SharedMemory --> ReportThread : Safety violation events
-deactivate SharedMemory
+    ReportThread -> SharedMemory : Read total number of flights
+    activate SharedMemory
+    SharedMemory --> ReportThread : Total number of flights
+    deactivate SharedMemory
 
-ReportThread -> Report : Compile simulation report
-activate Report
-Report --> ReportThread : Report compiled
-deactivate Report
+    ReportThread -> SharedMemory : Read individual flight execution statuses
+    activate SharedMemory
+    SharedMemory --> ReportThread : Flight execution statuses
+    deactivate SharedMemory
 
-ReportThread --> System : Simulation report
-deactivate ReportThread
+    ReportThread -> SharedMemory : Read safety violation events
+    activate SharedMemory
+    SharedMemory --> ReportThread : Violations with timestamps,\npositions and velocity vectors
+    deactivate SharedMemory
 
-alt report generated successfully
-    System --> FCO : Display simulation report
-else report generation fails
-    System --> FCO : Display report generation error
+    ReportThread -> SharedMemory : Read final validation result
+    activate SharedMemory
+    SharedMemory --> ReportThread : Pass/fail validation result
+    deactivate SharedMemory
+
+    ReportThread -> Report : Compile comprehensive final report
+    activate Report
+    Report --> ReportThread : Final report compiled
+    deactivate Report
+
+    ReportThread -> ReportFile : Save complete report to file
+    activate ReportFile
+    ReportFile --> ReportThread : Report file saved
+    deactivate ReportFile
+
+    ReportThread --> System : Final report file reference
+    deactivate ReportThread
+
+    System --> FCO : Display final report generated message
+
+else simulation has not concluded
+
+    System --> FCO : Display report unavailable until simulation concludes
+
+else report generation or storage fails
+
+    System --> FCO : Display report generation/storage error
+
 end
 
 deactivate System

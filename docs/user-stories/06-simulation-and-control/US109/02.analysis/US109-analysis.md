@@ -23,19 +23,14 @@ The relevant domain concepts for this user story are:
 
 ### 2.2. Business Rules
 
-* Only an authorized Flight Control Operator can request a simulation report through the application layer.
-* The selected simulation must exist.
-* The report must include simulation metadata and configuration.
-* The report must include included flights or flight plans.
-* The report must include aircraft movement or position information.
-* The report must include detected safety violation events.
-* The report must include safety violation count.
-* The report must include flight process statuses.
-* The report must include warnings and errors.
-* The report must include the final simulation outcome.
-* Report data must be read safely from shared simulation data.
-* Report data must not be inconsistent with partially completed time steps.
-* If the simulation is still running, the report must clearly represent a current/partial snapshot.
+* The report generation thread must aggregate data only once the simulation concludes.
+* The report must include the total number of flights.
+* The report must include individual flight execution statuses.
+* The report must include detailed safety violation events.
+* Each safety violation event must include timestamp, position and velocity vector data.
+* The report must clearly indicate the final validation result as pass or fail.
+* The complete report must be saved to a file for future reference.
+* If the simulation has not concluded, the final stored report must not be generated.
 
 ---
 

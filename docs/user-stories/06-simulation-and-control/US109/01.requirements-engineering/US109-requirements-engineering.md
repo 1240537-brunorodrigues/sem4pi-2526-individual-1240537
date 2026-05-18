@@ -4,11 +4,11 @@
 
 ### 1.1. User Story Description
 
-As a Flight Control Operator, I want to generate a simulation report so that I can analyze the execution results of the simulated flights.
+As a Flight Control Operator, I want a comprehensive report that details the simulation outcomes including flight execution statuses, safety violation events with timestamps, positions and velocity vectors, and overall validation results, so that I can assess the safety and performance of the flights post-simulation.
 
-This functionality allows a Flight Control Operator to obtain a report describing the outcome of a simulation. The report should include relevant simulation data, such as the simulation configuration, included flight plans, aircraft positions over time, safety violations, process status, warnings, errors and final simulation result.
+This functionality allows the system to generate and store a complete final simulation report after the simulation concludes. The report generation thread aggregates all relevant simulation data once execution has finished.
 
-The report may be generated during or after the simulation, depending on the implementation. Since the parent process includes a report generation thread, this thread should compile and maintain report data as simulation events occur.
+The report must include the total number of flights, individual execution statuses, detailed safety violation events, timestamps, aircraft positions, velocity vectors and the final validation result. The complete report must be saved to a file for future reference.
 
 ---
 
@@ -30,24 +30,24 @@ No additional client clarifications are currently available.
 
 ### 1.3. Acceptance Criteria
 
-* **AC1:** A Flight Control Operator must be able to generate or obtain a simulation report.
+### 1.3. Acceptance Criteria
+
+* **AC1:** A Flight Control Operator must be able to obtain a comprehensive final simulation report.
 * **AC2:** The Flight Control Operator must be authenticated and authorized, if the report is requested through the application layer.
 * **AC3:** The selected simulation must exist.
-* **AC4:** The report must include simulation identification or metadata.
-* **AC5:** The report must include simulation configuration.
-* **AC6:** The report must include the included flights or flight plans.
-* **AC7:** The report must include aircraft position data or a summary of aircraft movement.
-* **AC8:** The report must include safety violation events.
-* **AC9:** The report must include the number of detected safety violations.
-* **AC10:** The report must include flight process status information.
-* **AC11:** The report must include warnings or errors generated during simulation.
-* **AC12:** The report must include the final simulation outcome.
-* **AC13:** Report data must be read safely from shared simulation data.
-* **AC14:** Shared report data must be protected by mutexes where necessary.
-* **AC15:** The report generation thread must be able to update report data when safety violation events occur.
-* **AC16:** The report must not contain inconsistent partial data from an unfinished time step.
-* **AC17:** If report generation fails, the system must provide a meaningful error message.
-* **AC18:** This functionality must be implemented consistently with the C simulation component.
+* **AC4:** The report generation thread must aggregate data once the simulation concludes.
+* **AC5:** The report must include the total number of flights.
+* **AC6:** The report must include the individual execution status of each flight.
+* **AC7:** The report must include detailed safety violation events.
+* **AC8:** Each safety violation event must include a timestamp.
+* **AC9:** Each safety violation event must include the involved aircraft positions.
+* **AC10:** Each safety violation event must include the involved aircraft velocity vectors.
+* **AC11:** The report must include the overall validation result.
+* **AC12:** The final validation result must be clearly indicated as pass or fail.
+* **AC13:** The complete report must be saved to a file for future reference.
+* **AC14:** The system must not generate the final stored report before the simulation has concluded.
+* **AC15:** If report generation fails, the system must provide a meaningful error message.
+* **AC16:** If report file storage fails, the system must provide a meaningful error message.
 
 ---
 
@@ -84,18 +84,23 @@ No additional client clarifications are currently available.
 **Output Data:**
 
 * In case of success:
-    * Simulation report, including:
-        * simulation metadata;
-        * configuration summary;
-        * included flights;
-        * movement/position summary;
-        * safety violation summary;
-        * process status summary;
-        * warnings and errors;
-        * final outcome.
+    * Final simulation report file
+    * Report generation confirmation
+    * File path or report identifier
+    * Final validation result
+
+* The report file must include:
+    * Total number of flights
+    * Individual flight execution statuses
+    * Safety violation events
+    * Timestamps of safety violations
+    * Positions involved in safety violations
+    * Velocity vectors involved in safety violations
+    * Overall validation result
+    * Pass/fail indication
 
 * In case of failure:
-    * Error message explaining why the report could not be generated.
+    * Error message explaining why the report could not be generated or stored
 
 ---
 

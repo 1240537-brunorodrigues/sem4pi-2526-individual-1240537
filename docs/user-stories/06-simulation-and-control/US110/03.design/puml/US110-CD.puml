@@ -21,7 +21,25 @@ package "c.simulation.process" #DDDDDD {
     }
 }
 
+package "c.simulation.thread" #DDDDDD {
+    class EnvironmentThread {
+        - threadId: long
+        + run()
+        + loadEnvironmentalConfiguration()
+        + writeEnvironmentDataForStep(step: TimeStep)
+    }
+}
+
 package "c.simulation.environment" #DDDDDD {
+    class WeatherServiceClient {
+        + loadWindConfiguration(context: SimulationEnvironmentContext): WindConfiguration
+    }
+
+    class WindConfiguration {
+        - windSpeed: double
+        - windDirection: double
+    }
+
     class EnvironmentalDataProvider {
         + getDataForContext(context: SimulationEnvironmentContext): EnvironmentalDataSet
     }
@@ -68,7 +86,9 @@ package "c.simulation.environment" #DDDDDD {
 package "c.simulation.shared" #DDDDDD {
     class SharedEnvironmentalDataManager {
         + writeEnvironmentForStep(step: TimeStep, data: EnvironmentalData): int
+        + writeWindConfiguration(config: WindConfiguration): int
         + readEnvironmentForStep(step: TimeStep): EnvironmentalData
+        + readWindConfiguration(): WindConfiguration
     }
 
     class SharedAircraftStateWriter {
@@ -116,12 +136,18 @@ package "c.simulation.logging" #DDDDDD {
     }
 }
 
+ParentSimulationProcess --> EnvironmentThread : spawns >
 ParentSimulationProcess --> EnvironmentalDataProvider : retrieves >
 ParentSimulationProcess --> EnvironmentalDataValidator : validates >
 ParentSimulationProcess --> EnvironmentalPolicy : handles missing/invalid >
 ParentSimulationProcess --> SharedEnvironmentalDataManager : publishes >
 ParentSimulationProcess --> SimulationReportUpdater : reports >
 ParentSimulationProcess --> SimulationLogger : logs >
+
+EnvironmentThread --> WeatherServiceClient : loads configuration >
+EnvironmentThread --> SharedEnvironmentalDataManager : writes each step >
+WeatherServiceClient --> WindConfiguration : returns >
+SharedEnvironmentalDataManager --> WindConfiguration : stores >
 
 FlightProcess --> SharedEnvironmentalDataManager : reads >
 FlightProcess --> EnvironmentalInfluenceModel : applies >

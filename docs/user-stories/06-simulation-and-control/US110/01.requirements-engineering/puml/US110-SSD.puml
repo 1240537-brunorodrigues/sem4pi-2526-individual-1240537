@@ -5,76 +5,64 @@ skinparam shadowing false
 skinparam sequenceMessageAlign center
 autonumber
 
-actor "Simulation Engine" as Engine
+actor "PO" as PO
 participant ":Parent Simulation Process" as ParentProcess
-participant ":Environmental Data Source" as EnvSource
+participant ":Environment Thread" as EnvironmentThread
+participant ":Weather Service" as WeatherService
 participant ":Shared Memory" as SharedMemory
 participant ":Flight Process" as FlightProcess
-participant ":Simulation Report" as Report
 
-activate Engine
+activate PO
+
+PO -> ParentProcess : Start simulation with environmental influences
+
 activate ParentProcess
+ParentProcess -> EnvironmentThread : Spawn environment thread at simulation start
 
-Engine -> ParentProcess : Start simulation with environmental influences
+activate EnvironmentThread
+EnvironmentThread -> WeatherService : Load environmental configuration
 
-ParentProcess -> EnvSource : Retrieve environmental data for simulation context
-activate EnvSource
-EnvSource --> ParentProcess : Environmental data
-deactivate EnvSource
+activate WeatherService
+WeatherService --> EnvironmentThread : Wind speed and wind direction
+deactivate WeatherService
 
-ParentProcess --> ParentProcess : Validate environmental data
+EnvironmentThread --> EnvironmentThread : Validate environmental data
 
 alt environmental data is valid
 
-    ParentProcess -> SharedMemory : Store environmental data
-    activate SharedMemory
-    SharedMemory --> ParentProcess : Environmental data stored
-    deactivate SharedMemory
-
     loop For each simulation time step
 
-        ParentProcess -> SharedMemory : Publish environmental data for current step
+        EnvironmentThread -> SharedMemory : Write wind speed and wind direction\nfor current time step
+
         activate SharedMemory
-        SharedMemory --> ParentProcess : Current step environment ready
+        SharedMemory --> EnvironmentThread : Environmental data stored
         deactivate SharedMemory
 
         activate FlightProcess
-        FlightProcess -> SharedMemory : Read current environmental data
+        FlightProcess -> SharedMemory : Read current time step environmental data
+
         activate SharedMemory
-        SharedMemory --> FlightProcess : Current environmental data
+        SharedMemory --> FlightProcess : Wind speed and wind direction
         deactivate SharedMemory
 
-        FlightProcess --> FlightProcess : Apply environmental influences
-        FlightProcess --> FlightProcess : Calculate adjusted movement and fuel data
-
-        FlightProcess -> SharedMemory : Write adjusted aircraft state
-        activate SharedMemory
-        SharedMemory --> FlightProcess : Adjusted state stored
-        deactivate SharedMemory
+        FlightProcess --> FlightProcess : Apply environmental influence to movement
         deactivate FlightProcess
-
-        ParentProcess --> ParentProcess : Continue step synchronization
 
     end
 
-    ParentProcess -> Report : Add environmental influence summary
-    activate Report
-    Report --> ParentProcess : Report updated
-    deactivate Report
-
 else environmental data is missing or invalid
 
-    ParentProcess --> ParentProcess : Apply missing-data policy
-    ParentProcess -> Report : Log environmental data warning/error
-    activate Report
-    Report --> ParentProcess : Warning/error logged
-    deactivate Report
+    EnvironmentThread --> ParentProcess : Report environmental data error
+    ParentProcess --> ParentProcess : Apply missing/invalid data policy
 
 end
 
-ParentProcess --> Engine : Environmental influence processing completed
+EnvironmentThread --> ParentProcess : Environment thread completed or stopped
+deactivate EnvironmentThread
+
+ParentProcess --> PO : Environmental influence support initialized
 
 deactivate ParentProcess
-deactivate Engine
+deactivate PO
 
 @enduml

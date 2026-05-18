@@ -28,16 +28,14 @@ The relevant domain concepts for this user story are:
 * The selected simulation must exist.
 * The selected simulation must be in a final state.
 * A running simulation should not produce a final report.
-* The final report must include complete and consistent simulation data.
-* The final report must include simulation metadata and configuration.
-* The final report must include included flights and final flight process statuses.
-* The final report must include aircraft movement or position information.
-* The final report must include all safety violation events.
-* The final report must include total safety violation count.
-* The final report must include environmental influence information when applicable.
-* The final report must include warnings and errors.
-* The final report must include whether the simulation completed normally, failed or was terminated early.
-* Final report generation must avoid incomplete time-step data.
+* The report must summarize simulation results for the Flight Control Operator.
+* The report must help determine whether the programmed flights are safe to run.
+* The report must include the total number of flights.
+* The report must include flight execution statuses.
+* The report must include safety violation timestamps and positions when violations occur.
+* The report must indicate whether the scheduled flights plan passed or failed validation.
+* The report must be stored in a file.
+* The report may reuse data collected for the comprehensive final report.
 
 ---
 

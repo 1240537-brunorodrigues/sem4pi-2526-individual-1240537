@@ -17,6 +17,7 @@ participant "ReportGenerationThread" as ReportThread
 participant "SharedMemoryAccessor" as SharedAccessor
 participant "ReportDataBuilder" as ReportBuilder
 participant "SimulationReportFormatter" as Formatter
+participant "ReportFileWriter" as ReportFileWriter
 participant "SimulationReportOutputParser" as Parser
 
 activate FCO
@@ -83,6 +84,12 @@ alt FCO is authorized
         SharedAccessor --> ReportThread : safetyViolations
         deactivate SharedAccessor
 
+        ReportThread -> SharedAccessor : readSafetyViolationVelocityVectors()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : velocityVectors
+        deactivate SharedAccessor
+
         ReportThread -> SharedAccessor : readWarnings()
 
         activate SharedAccessor
@@ -113,7 +120,7 @@ alt FCO is authorized
         ReportBuilder --> ReportThread : added
         deactivate ReportBuilder
 
-        ReportThread -> ReportBuilder : addSafetyViolations(safetyViolations)
+        ReportThread -> ReportBuilder : addSafetyViolations(safetyViolations, velocityVectors)
 
         activate ReportBuilder
         ReportBuilder --> ReportThread : added
@@ -136,6 +143,12 @@ alt FCO is authorized
         activate Formatter
         Formatter --> ReportThread : formattedReport
         deactivate Formatter
+
+        ReportThread -> ReportFileWriter : save(formattedReport)
+
+        activate ReportFileWriter
+        ReportFileWriter --> ReportThread : ReportFileReference
+        deactivate ReportFileWriter
 
         ReportThread --> CRunner : CReportOutput
         deactivate ReportThread

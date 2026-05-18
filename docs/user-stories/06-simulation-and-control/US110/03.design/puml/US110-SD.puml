@@ -7,7 +7,8 @@ skinparam sequenceMessageAlign center
 autonumber
 
 participant "ParentSimulationProcess" as ParentProcess
-participant "EnvironmentalDataProvider" as EnvProvider
+participant "EnvironmentThread" as EnvironmentThread
+participant "WeatherServiceClient" as WeatherServiceClient
 participant "EnvironmentalDataValidator" as EnvValidator
 participant "EnvironmentalPolicy" as EnvPolicy
 participant "SharedEnvironmentalDataManager" as SharedEnvManager
@@ -19,32 +20,35 @@ participant "SimulationLogger" as Logger
 
 activate ParentProcess
 
-ParentProcess -> EnvProvider : getDataForContext(simulationContext)
+ParentProcess -> EnvironmentThread : create/start()
 
-activate EnvProvider
-EnvProvider --> ParentProcess : environmentalDataSet
-deactivate EnvProvider
+activate EnvironmentThread
+EnvironmentThread -> WeatherServiceClient : loadWindConfiguration(simulationContext)
 
-ParentProcess -> EnvValidator : validate(environmentalDataSet)
+activate WeatherServiceClient
+WeatherServiceClient --> EnvironmentThread : windConfiguration
+deactivate WeatherServiceClient
+
+EnvironmentThread -> EnvValidator : validate(windConfiguration)
 
 activate EnvValidator
-EnvValidator --> ParentProcess : validationResult
+EnvValidator --> EnvironmentThread : validationResult
 deactivate EnvValidator
 
-alt environmental data is valid
+alt wind configuration is valid
 
-    ParentProcess -> ReportUpdater : addEnvironmentalSummary(environmentalDataSet)
+    EnvironmentThread -> ReportUpdater : addEnvironmentalSummary(windConfiguration)
 
     activate ReportUpdater
-    ReportUpdater --> ParentProcess : summary added
+    ReportUpdater --> EnvironmentThread : summary added
     deactivate ReportUpdater
 
     loop for each simulation time step
 
-        ParentProcess -> SharedEnvManager : writeEnvironmentForStep(currentStep, environmentalData)
+        EnvironmentThread -> SharedEnvManager : writeEnvironmentForStep(currentStep, windConfiguration)
 
         activate SharedEnvManager
-        SharedEnvManager --> ParentProcess : environment published
+        SharedEnvManager --> EnvironmentThread : environment published
         deactivate SharedEnvManager
 
         activate FlightProcess
@@ -75,56 +79,95 @@ alt environmental data is valid
 
     end
 
-else environmental data is missing
+else wind configuration is missing
 
-    ParentProcess -> EnvPolicy : handleMissingData(simulationContext)
+    EnvironmentThread -> EnvPolicy : handleMissingData(simulationContext)
 
     activate EnvPolicy
-    EnvPolicy --> ParentProcess : defaultEnvironmentalDataSet / failure
+    EnvPolicy --> EnvironmentThread : defaultWindConfiguration / failure
     deactivate EnvPolicy
 
-    alt default environmental data is available
+    alt default wind configuration is available
 
-        ParentProcess -> ReportUpdater : addEnvironmentalWarning("Default environmental data used")
+        EnvironmentThread -> ReportUpdater : addEnvironmentalWarning("Default wind configuration used")
 
         activate ReportUpdater
-        ReportUpdater --> ParentProcess : warning added
+        ReportUpdater --> EnvironmentThread : warning added
         deactivate ReportUpdater
 
-        ParentProcess -> Logger : logWarning("Default environmental data used")
+        EnvironmentThread -> Logger : logWarning("Default wind configuration used")
 
         activate Logger
-        Logger --> ParentProcess : warning logged
+        Logger --> EnvironmentThread : warning logged
         deactivate Logger
 
-    else no valid default environmental data
+        loop for each simulation time step
 
-        ParentProcess -> Logger : logError("Environmental data unavailable")
+            EnvironmentThread -> SharedEnvManager : writeEnvironmentForStep(currentStep, defaultWindConfiguration)
+
+            activate SharedEnvManager
+            SharedEnvManager --> EnvironmentThread : environment published
+            deactivate SharedEnvManager
+
+            activate FlightProcess
+
+            FlightProcess -> SharedEnvManager : readEnvironmentForStep(currentStep)
+
+            activate SharedEnvManager
+            SharedEnvManager --> FlightProcess : environmentalData
+            deactivate SharedEnvManager
+
+            FlightProcess --> FlightProcess : calculate base aircraft state
+
+            FlightProcess -> InfluenceModel : apply(baseState, environmentalData)
+
+            activate InfluenceModel
+            InfluenceModel --> FlightProcess : adjustedAircraftState
+            deactivate InfluenceModel
+
+            FlightProcess -> StateWriter : writeAdjustedState(adjustedAircraftState)
+
+            activate StateWriter
+            StateWriter --> FlightProcess : adjusted state written
+            deactivate StateWriter
+
+            deactivate FlightProcess
+
+            ParentProcess --> ParentProcess : Continue step synchronization
+
+        end
+
+    else no valid default wind configuration
+
+        EnvironmentThread -> Logger : logError("Environmental data unavailable")
 
         activate Logger
-        Logger --> ParentProcess : error logged
+        Logger --> EnvironmentThread : error logged
         deactivate Logger
 
-        ParentProcess --> ParentProcess : Stop or mark simulation as failed
+        EnvironmentThread --> ParentProcess : environment initialization failed
 
     end
 
-else environmental data is invalid
+else wind configuration is invalid
 
-    ParentProcess -> EnvPolicy : handleInvalidData(validationResult)
+    EnvironmentThread -> EnvPolicy : handleInvalidData(validationResult)
 
     activate EnvPolicy
-    EnvPolicy --> ParentProcess : handled / failure
+    EnvPolicy --> EnvironmentThread : handled / failure
     deactivate EnvPolicy
 
-    ParentProcess -> Logger : logError("Invalid environmental data")
+    EnvironmentThread -> Logger : logError("Invalid wind configuration")
 
     activate Logger
-    Logger --> ParentProcess : error logged
+    Logger --> EnvironmentThread : error logged
     deactivate Logger
+
+    EnvironmentThread --> ParentProcess : environment validation failed
 
 end
 
+deactivate EnvironmentThread
 deactivate ParentProcess
 
 @enduml
