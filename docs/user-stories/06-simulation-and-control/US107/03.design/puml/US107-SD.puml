@@ -1,0 +1,165 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "SafetyViolationDetectionThread" as SafetyThread
+participant "SharedMemoryManager" as SharedMemory
+participant "MutexManager" as MutexManager
+participant "SharedViolationState" as SharedState
+participant "PendingViolationQueue" as ViolationQueue
+participant "ConditionVariableManager" as CondManager
+participant "ReportGenerationThread" as ReportThread
+participant "ReportDataBuilder" as ReportBuilder
+participant "SimulationLogger" as Logger
+
+activate ReportThread
+
+ReportThread -> MutexManager : lock(violationMutex)
+
+activate MutexManager
+MutexManager --> ReportThread : locked
+deactivate MutexManager
+
+ReportThread -> SharedState : hasPendingViolations()
+
+activate SharedState
+SharedState --> ReportThread : false
+deactivate SharedState
+
+ReportThread -> CondManager : wait(violationCondition, violationMutex)
+
+activate CondManager
+CondManager -> MutexManager : release mutex while waiting
+
+activate MutexManager
+MutexManager --> CondManager : mutex released
+deactivate MutexManager
+
+activate SafetyThread
+
+loop monitor shared memory for flight conflicts
+
+    SafetyThread -> SharedMemory : readFlightStates()
+
+    activate SharedMemory
+    SharedMemory --> SafetyThread : flightStates
+    deactivate SharedMemory
+
+    SafetyThread -> SafetyThread : detectSafetyViolation(flightStates)
+
+    alt safety violation detected
+
+        SafetyThread -> MutexManager : lock(violationMutex)
+
+        activate MutexManager
+        MutexManager --> SafetyThread : locked
+        deactivate MutexManager
+
+        SafetyThread -> ViolationQueue : enqueue(violationEvent)
+
+        activate ViolationQueue
+        ViolationQueue --> SafetyThread : enqueued
+        deactivate ViolationQueue
+
+        SafetyThread -> SharedState : incrementPendingViolationCount()
+
+        activate SharedState
+        SharedState --> SafetyThread : updated
+        deactivate SharedState
+
+        SafetyThread -> CondManager : signal(violationCondition)
+
+        activate CondManager
+        CondManager --> SafetyThread : condition signalled
+        deactivate CondManager
+
+        SafetyThread -> MutexManager : unlock(violationMutex)
+
+        activate MutexManager
+        MutexManager --> SafetyThread : unlocked
+        deactivate MutexManager
+
+        CondManager --> ReportThread : awakened
+
+        CondManager -> MutexManager : reacquire mutex before returning
+
+        activate MutexManager
+        MutexManager --> CondManager : mutex reacquired
+        deactivate MutexManager
+
+        CondManager --> ReportThread : wait completed
+        deactivate CondManager
+
+        ReportThread -> SharedState : hasPendingViolations()
+
+        activate SharedState
+        SharedState --> ReportThread : true
+        deactivate SharedState
+
+        ReportThread -> ViolationQueue : dequeue()
+
+        activate ViolationQueue
+        ViolationQueue --> ReportThread : violationEvent
+        deactivate ViolationQueue
+
+        ReportThread -> SharedState : decrementPendingViolationCount()
+
+        activate SharedState
+        SharedState --> ReportThread : updated
+        deactivate SharedState
+
+        ReportThread -> MutexManager : unlock(violationMutex)
+
+        activate MutexManager
+        MutexManager --> ReportThread : unlocked
+        deactivate MutexManager
+
+        ReportThread -> ReportBuilder : addSafetyViolation(violationEvent)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : violation added to report data
+        deactivate ReportBuilder
+
+        ReportThread -> Logger : logInfo("Safety violation added to report")
+
+        activate Logger
+        Logger --> ReportThread : logged
+        deactivate Logger
+
+        ReportThread -> MutexManager : lock(violationMutex)
+
+        activate MutexManager
+        MutexManager --> ReportThread : locked
+        deactivate MutexManager
+
+        ReportThread -> SharedState : hasPendingViolations()
+
+        activate SharedState
+        SharedState --> ReportThread : false
+        deactivate SharedState
+
+        ReportThread -> CondManager : wait(violationCondition, violationMutex)
+
+        activate CondManager
+        CondManager -> MutexManager : release mutex while waiting
+
+        activate MutexManager
+        MutexManager --> CondManager : mutex released
+        deactivate MutexManager
+
+    else no safety violation detected
+
+        SafetyThread --> SafetyThread : continue monitoring
+
+    end
+
+end
+
+deactivate SafetyThread
+deactivate ReportThread
+
+@enduml

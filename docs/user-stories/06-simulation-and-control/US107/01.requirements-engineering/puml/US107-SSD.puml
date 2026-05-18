@@ -1,0 +1,84 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Safety Violation Detection Thread" as SafetyThread
+participant ":Shared Memory" as SharedMemory
+participant ":Parent Synchronization Context" as SyncContext
+participant ":Report Generation Thread" as ReportThread
+participant ":Simulation Report" as Report
+
+activate SafetyThread
+activate ReportThread
+
+ReportThread -> SyncContext : Lock violation mutex
+ReportThread -> SyncContext : Check pending violation events
+
+alt no pending violation events
+    ReportThread -> SyncContext : Wait on violation condition variable\n(releases mutex while waiting)
+end
+
+loop Continuously monitor simulation state
+
+    SafetyThread -> SharedMemory : Read flight positions and separation data
+
+    activate SharedMemory
+    SharedMemory --> SafetyThread : Current flight state
+    deactivate SharedMemory
+
+    alt safety violation detected
+
+        SafetyThread -> SyncContext : Lock violation mutex
+
+        activate SyncContext
+        SafetyThread -> SyncContext : Store violation event in pending queue
+        SafetyThread -> SyncContext : Signal violation condition variable
+        SafetyThread -> SyncContext : Unlock violation mutex
+        deactivate SyncContext
+
+        SyncContext --> ReportThread : Wake report generation thread
+
+        ReportThread -> SyncContext : Wake and reacquire violation mutex
+
+        activate SyncContext
+        ReportThread -> SyncContext : Read pending violation event
+        ReportThread -> SyncContext : Mark violation event as consumed
+        ReportThread -> SyncContext : Unlock violation mutex
+        deactivate SyncContext
+
+        ReportThread -> Report : Log safety violation event
+
+        activate Report
+        Report --> ReportThread : Violation event logged
+        deactivate Report
+
+        ReportThread -> Report : Update report data in real time
+
+        activate Report
+        Report --> ReportThread : Report data updated
+        deactivate Report
+
+        ReportThread -> SyncContext : Lock violation mutex
+        ReportThread -> SyncContext : Check pending violation events
+
+        alt no more pending violation events
+            ReportThread -> SyncContext : Wait on violation condition variable\n(releases mutex while waiting)
+        else more pending violation events exist
+            ReportThread --> ReportThread : Continue processing pending events
+        end
+
+    else no safety violation detected
+
+        SafetyThread --> SafetyThread : Continue monitoring
+
+    end
+
+end
+
+deactivate ReportThread
+deactivate SafetyThread
+
+@enduml

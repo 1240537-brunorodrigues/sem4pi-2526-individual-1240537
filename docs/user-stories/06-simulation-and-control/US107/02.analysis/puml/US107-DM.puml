@@ -1,0 +1,71 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class SafetyViolationDetectionThread {
+    threadId
+    status
+}
+
+class ReportGenerationThread {
+    threadId
+    status
+}
+
+class SafetyViolationEvent {
+    violationId
+    timestamp
+    involvedAircraftIds
+    severity
+    description
+}
+
+class SharedViolationState {
+    pendingViolationCount
+    shutdownRequested
+}
+
+class PendingViolationQueue {
+    events
+}
+
+class ViolationMutex {
+    locked
+}
+
+class ViolationConditionVariable {
+    waitingThreads
+}
+
+class ReportData {
+    safetyViolationEntries
+}
+
+class NotificationResult {
+    success
+    errorMessage
+}
+
+SafetyViolationDetectionThread "1" -- "*" SafetyViolationEvent : detects >
+SafetyViolationDetectionThread "1" -- "1" SharedViolationState : updates >
+SharedViolationState "1" -- "1" PendingViolationQueue : contains >
+PendingViolationQueue "1" o-- "*" SafetyViolationEvent : stores >
+
+SharedViolationState "1" -- "1" ViolationMutex : protected by >
+SharedViolationState "1" -- "1" ViolationConditionVariable : notifies through >
+
+ReportGenerationThread "1" -- "1" ViolationConditionVariable : waits on >
+ReportGenerationThread "1" -- "1" SharedViolationState : reads >
+ReportGenerationThread "1" -- "1" ReportData : updates >
+ReportData "1" o-- "*" SafetyViolationEvent : includes >
+
+ViolationConditionVariable "1" -- "*" NotificationResult : produces >
+
+@enduml

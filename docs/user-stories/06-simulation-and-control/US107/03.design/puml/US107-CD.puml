@@ -1,0 +1,111 @@
+@startuml
+title US107-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.thread" #DDDDDD {
+    class SafetyViolationDetectionThread {
+        - threadId: long
+        + run()
+        + onViolationDetected(violation: SafetyViolationEvent)
+    }
+
+    class ReportGenerationThread {
+        - threadId: long
+        + run()
+        + processPendingViolations()
+    }
+}
+
+package "c.simulation.safety" #DDDDDD {
+    class SafetyViolationEvent {
+        - violationId: String
+        - timestamp: long
+        - involvedAircraftIds: String[]
+        - severity: String
+        - description: String
+    }
+
+    class SharedViolationState {
+        - pendingViolationCount: int
+        - shutdownRequested: boolean
+        + hasPendingViolations(): boolean
+        + isShutdownRequested(): boolean
+    }
+
+    class PendingViolationQueue {
+        + enqueue(event: SafetyViolationEvent): int
+        + dequeue(): SafetyViolationEvent
+        + isEmpty(): boolean
+    }
+}
+
+package "c.simulation.sync" #DDDDDD {
+    class ViolationMutex {
+        - initialized: boolean
+    }
+
+    class ViolationConditionVariable {
+        - initialized: boolean
+    }
+
+    class MutexManager {
+        + lock(mutex: ViolationMutex): int
+        + unlock(mutex: ViolationMutex): int
+    }
+
+    class ConditionVariableManager {
+        + wait(condition: ViolationConditionVariable, mutex: ViolationMutex): int
+        + signal(condition: ViolationConditionVariable): int
+        + broadcast(condition: ViolationConditionVariable): int
+    }
+}
+
+package "c.simulation.report" #DDDDDD {
+    class ReportDataBuilder {
+        + addSafetyViolation(event: SafetyViolationEvent)
+        + compilePartialReport()
+    }
+
+    class ReportData {
+        - safetyViolationEntries: SafetyViolationEvent[]
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logInfo(message: String)
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+SafetyViolationDetectionThread --> SharedViolationState : updates >
+SafetyViolationDetectionThread --> PendingViolationQueue : enqueues >
+SafetyViolationDetectionThread --> MutexManager : locks/unlocks >
+SafetyViolationDetectionThread --> ConditionVariableManager : signals >
+SafetyViolationDetectionThread --> SimulationLogger : logs >
+
+ReportGenerationThread --> SharedViolationState : checks >
+ReportGenerationThread --> PendingViolationQueue : dequeues >
+ReportGenerationThread --> MutexManager : locks/unlocks >
+ReportGenerationThread --> ConditionVariableManager : waits >
+ReportGenerationThread --> ReportDataBuilder : updates report >
+ReportGenerationThread --> SimulationLogger : logs >
+
+SharedViolationState "1" --> "1" PendingViolationQueue : owns >
+SharedViolationState "1" --> "1" ViolationMutex : protected by >
+SharedViolationState "1" --> "1" ViolationConditionVariable : notifies with >
+
+PendingViolationQueue "1" o-- "*" SafetyViolationEvent
+ReportDataBuilder --> ReportData : updates >
+ReportData "1" o-- "*" SafetyViolationEvent
+
+MutexManager --> ViolationMutex : manages >
+ConditionVariableManager --> ViolationConditionVariable : manages >
+ConditionVariableManager --> ViolationMutex : waits with >
+
+@enduml
