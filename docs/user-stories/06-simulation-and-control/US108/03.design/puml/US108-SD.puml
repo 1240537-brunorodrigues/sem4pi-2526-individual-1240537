@@ -1,0 +1,150 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+participant "ParentSimulationProcess" as ParentProcess
+participant "SimulationClock" as Clock
+participant "ActiveFlightProcessRegistry" as Registry
+participant "StepSemaphoreCoordinator" as Coordinator
+participant "StartStepSemaphore" as StartSemaphore
+participant "FlightProcess" as FlightProcess
+participant "SharedAircraftStateWriter" as StateWriter
+participant "SharedMemoryManager" as SharedMemory
+participant "CompletionSemaphore" as CompletionSemaphore
+participant "StepCompletionBarrier" as Barrier
+participant "SynchronizationFailureHandler" as FailureHandler
+participant "SimulationLogger" as Logger
+
+activate ParentProcess
+
+ParentProcess -> Clock : currentStep()
+
+activate Clock
+Clock --> ParentProcess : currentStep
+deactivate Clock
+
+loop for each simulation time step
+
+    ParentProcess -> Registry : getActiveProcessIds()
+
+    activate Registry
+    Registry --> ParentProcess : activeProcessIds
+    deactivate Registry
+
+    ParentProcess -> Coordinator : releaseFlightsForStep(activeProcessIds)
+
+    activate Coordinator
+
+    loop for each active flight process
+        Coordinator -> StartSemaphore : post()
+
+        activate StartSemaphore
+        StartSemaphore --> Coordinator : released
+        deactivate StartSemaphore
+    end
+
+    Coordinator --> ParentProcess : flight processes released
+    deactivate Coordinator
+
+    activate FlightProcess
+    FlightProcess -> StartSemaphore : wait()
+
+    activate StartSemaphore
+    StartSemaphore --> FlightProcess : step permission granted
+    deactivate StartSemaphore
+
+    FlightProcess --> FlightProcess : calculate movement for currentStep
+
+    FlightProcess -> StateWriter : writeStepState(processId, currentStep, aircraftState)
+
+    activate StateWriter
+    StateWriter -> SharedMemory : writeAircraftState(aircraftState)
+
+    activate SharedMemory
+    SharedMemory --> StateWriter : state written
+    deactivate SharedMemory
+
+    StateWriter --> FlightProcess : state write completed
+    deactivate StateWriter
+
+    FlightProcess -> CompletionSemaphore : post()
+
+    activate CompletionSemaphore
+    CompletionSemaphore --> FlightProcess : completion signalled
+    deactivate CompletionSemaphore
+
+    deactivate FlightProcess
+
+    ParentProcess -> Coordinator : waitForStepCompletion(activeProcessIds)
+
+    activate Coordinator
+
+    loop for each expected active flight process
+        Coordinator -> CompletionSemaphore : wait()
+
+        activate CompletionSemaphore
+        CompletionSemaphore --> Coordinator : one completion received
+        deactivate CompletionSemaphore
+    end
+
+    Coordinator -> Barrier : isComplete(expectedCount, completedCount)
+
+    activate Barrier
+    Barrier --> Coordinator : true/false
+    deactivate Barrier
+
+    alt all active flight processes completed the step
+
+        Coordinator --> ParentProcess : SynchronizationResult(success)
+
+        ParentProcess -> SharedMemory : readCurrentStepState()
+
+        activate SharedMemory
+        SharedMemory --> ParentProcess : currentStepSnapshot
+        deactivate SharedMemory
+
+        ParentProcess --> ParentProcess : Run step-dependent processing
+
+        ParentProcess -> Clock : advance()
+
+        activate Clock
+        Clock --> ParentProcess : nextStep
+        deactivate Clock
+
+        ParentProcess -> Logger : logInfo("Simulation advanced to next step")
+
+        activate Logger
+        Logger --> ParentProcess : logged
+        deactivate Logger
+
+    else step synchronization failed
+
+        Coordinator --> ParentProcess : SynchronizationResult(error)
+
+        ParentProcess -> FailureHandler : handleFailure(result)
+
+        activate FailureHandler
+        FailureHandler --> ParentProcess : failure handled
+        deactivate FailureHandler
+
+        ParentProcess -> Logger : logError("Step synchronization failed")
+
+        activate Logger
+        Logger --> ParentProcess : logged
+        deactivate Logger
+
+        ParentProcess --> ParentProcess : Stop or mark simulation as failed
+
+    end
+
+    deactivate Coordinator
+
+end
+
+deactivate ParentProcess
+
+@enduml

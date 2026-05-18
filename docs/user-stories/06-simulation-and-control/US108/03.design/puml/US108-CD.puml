@@ -1,0 +1,133 @@
+@startuml
+title US108-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "c.simulation.process" #DDDDDD {
+    class ParentSimulationProcess {
+        - processId: int
+        + runStepByStepSimulation()
+    }
+
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        - status: String
+        + waitForStepPermission()
+        + executeCurrentStep()
+        + signalStepCompleted()
+    }
+}
+
+package "c.simulation.time" #DDDDDD {
+    class SimulationClock {
+        - currentStep: TimeStep
+        - timeStepInterval: int
+        + currentStep(): TimeStep
+        + advance(): TimeStep
+    }
+
+    class TimeStep {
+        - index: int
+        - startTime: long
+        - endTime: long
+    }
+}
+
+package "c.simulation.sync" #DDDDDD {
+    class StepSemaphoreCoordinator {
+        + releaseFlightsForStep(activeSet: ActiveFlightProcessRegistry)
+        + waitForStepCompletion(activeSet: ActiveFlightProcessRegistry): SynchronizationResult
+    }
+
+    class StartStepSemaphore {
+        + post(): int
+        + wait(): int
+    }
+
+    class CompletionSemaphore {
+        + post(): int
+        + wait(): int
+    }
+
+    class StepCompletionBarrier {
+        + isComplete(expected: int, completed: int): boolean
+    }
+
+    class ActiveFlightProcessRegistry {
+        + getActiveProcessIds(): List<int>
+        + markCompleted(processId: int)
+        + markTerminated(processId: int)
+        + activeCount(): int
+    }
+
+    class SynchronizationResult {
+        - success: boolean
+        - completedCount: int
+        - errorMessage: String
+    }
+
+    class SynchronizationFailureHandler {
+        + handleFailure(result: SynchronizationResult)
+    }
+}
+
+package "c.simulation.shared" #DDDDDD {
+    class SharedMemoryManager {
+        + writeAircraftState(state: SharedAircraftState): int
+        + readCurrentStepState(): SharedSimulationSnapshot
+    }
+
+    class SharedAircraftStateWriter {
+        + writeStepState(processId: int, step: TimeStep, state: SharedAircraftState): int
+    }
+
+    class SharedAircraftState {
+        - aircraftId: String
+        - timeStepIndex: int
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+
+    class SharedSimulationSnapshot {
+        - timeStepIndex: int
+        - aircraftStates: SharedAircraftState[]
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logInfo(message: String)
+        + logWarning(message: String)
+        + logError(message: String)
+    }
+}
+
+ParentSimulationProcess --> SimulationClock : controls >
+ParentSimulationProcess --> ActiveFlightProcessRegistry : checks active flights >
+ParentSimulationProcess --> StepSemaphoreCoordinator : coordinates >
+ParentSimulationProcess --> SharedMemoryManager : reads completed step >
+ParentSimulationProcess --> SynchronizationFailureHandler : handles failures >
+ParentSimulationProcess --> SimulationLogger : logs >
+
+FlightProcess --> StartStepSemaphore : waits >
+FlightProcess --> SharedAircraftStateWriter : writes state >
+FlightProcess --> CompletionSemaphore : signals >
+
+StepSemaphoreCoordinator --> StartStepSemaphore : releases >
+StepSemaphoreCoordinator --> CompletionSemaphore : waits >
+StepSemaphoreCoordinator --> StepCompletionBarrier : checks >
+StepSemaphoreCoordinator --> SynchronizationResult : returns >
+StepCompletionBarrier --> ActiveFlightProcessRegistry : uses expected count >
+
+SharedAircraftStateWriter --> SharedMemoryManager : writes >
+SharedMemoryManager "1" o-- "*" SharedAircraftState
+SharedMemoryManager --> SharedSimulationSnapshot : creates >
+
+SimulationClock *-- TimeStep
+
+@enduml

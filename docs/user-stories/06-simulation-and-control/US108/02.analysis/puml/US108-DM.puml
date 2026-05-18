@@ -1,0 +1,94 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class SimulationEngine {
+    status
+}
+
+class ParentSimulationProcess {
+    processId
+    currentTimeStep
+}
+
+class FlightProcess {
+    processId
+    flightId
+    status
+}
+
+class TimeStep {
+    index
+    startTime
+    endTime
+}
+
+class SimulationClock {
+    currentStep
+    interval
+}
+
+class StartStepSemaphore {
+    value
+}
+
+class CompletionSemaphore {
+    value
+}
+
+class ActiveFlightProcessSet {
+    activeProcessIds
+}
+
+class SharedMemorySegment {
+    name
+    initialized
+}
+
+class SharedAircraftState {
+    aircraftId
+    timeStep
+    latitude
+    longitude
+    altitude
+}
+
+class StepCompletionBarrier {
+    expectedCompletions
+    receivedCompletions
+}
+
+class SynchronizationFailure {
+    type
+    description
+}
+
+SimulationEngine "1" -- "1" ParentSimulationProcess : controls >
+ParentSimulationProcess "1" -- "1" SimulationClock : advances >
+SimulationClock "1" -- "*" TimeStep : progresses through >
+
+ParentSimulationProcess "1" -- "1..*" FlightProcess : coordinates >
+ParentSimulationProcess "1" -- "1" ActiveFlightProcessSet : maintains >
+ActiveFlightProcessSet "1" o-- "*" FlightProcess : contains >
+
+ParentSimulationProcess "1" -- "1" StartStepSemaphore : releases >
+FlightProcess "*" -- "1" StartStepSemaphore : waits on >
+FlightProcess "*" -- "1" CompletionSemaphore : signals >
+ParentSimulationProcess "1" -- "1" CompletionSemaphore : waits on >
+
+ParentSimulationProcess "1" -- "1" StepCompletionBarrier : uses >
+StepCompletionBarrier "1" -- "1" ActiveFlightProcessSet : based on >
+
+FlightProcess "*" -- "1" SharedMemorySegment : writes to >
+SharedMemorySegment "1" o-- "*" SharedAircraftState : stores >
+
+ParentSimulationProcess "1" -- "0..*" SynchronizationFailure : handles >
+
+@enduml

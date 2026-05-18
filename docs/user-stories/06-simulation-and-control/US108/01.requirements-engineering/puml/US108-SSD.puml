@@ -1,0 +1,57 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Simulation Engine" as Engine
+participant ":Parent Simulation Process" as ParentProcess
+participant ":Start-Step Semaphore" as StartSemaphore
+participant ":Flight Process" as FlightProcess
+participant ":Shared Memory" as SharedMemory
+participant ":Completion Semaphore" as CompletionSemaphore
+
+activate Engine
+activate ParentProcess
+
+Engine -> ParentProcess : Start step-by-step synchronized simulation
+
+loop For each simulation time step
+
+    ParentProcess -> ParentProcess : Determine active flight processes
+    ParentProcess -> StartSemaphore : Release active flight processes for current step
+
+    activate FlightProcess
+    FlightProcess -> StartSemaphore : Wait for current step permission
+    StartSemaphore --> FlightProcess : Step execution allowed
+
+    FlightProcess --> FlightProcess : Calculate movement for current step
+
+    FlightProcess -> SharedMemory : Write updated aircraft state
+    activate SharedMemory
+    SharedMemory --> FlightProcess : State updated
+    deactivate SharedMemory
+
+    FlightProcess -> CompletionSemaphore : Signal current step completed
+    deactivate FlightProcess
+
+    ParentProcess -> CompletionSemaphore : Wait for all active flight completions
+    CompletionSemaphore --> ParentProcess : All active flights completed current step
+
+    ParentProcess -> SharedMemory : Read completed step state
+    activate SharedMemory
+    SharedMemory --> ParentProcess : Current step simulation state
+    deactivate SharedMemory
+
+    ParentProcess --> ParentProcess : Run step-dependent processing
+    ParentProcess --> ParentProcess : Advance simulation clock to next step
+
+end
+
+ParentProcess --> Engine : Synchronized simulation completed
+
+deactivate ParentProcess
+deactivate Engine
+
+@enduml
