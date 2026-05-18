@@ -1,0 +1,177 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "GenerateSimulationReportUI" as UI
+participant "GenerateSimulationReportController" as CTRL
+participant "GenerateSimulationReportService" as Service
+participant "AuthorizationService" as AuthzService
+participant "SimulationRepository" as SimulationRepo
+participant "CReportGenerationRunner" as CRunner
+participant "ReportGenerationThread" as ReportThread
+participant "SharedMemoryAccessor" as SharedAccessor
+participant "ReportDataBuilder" as ReportBuilder
+participant "SimulationReportFormatter" as Formatter
+participant "SimulationReportOutputParser" as Parser
+
+activate FCO
+
+FCO -> UI : Requests simulation report
+
+activate UI
+UI --> FCO : Requests simulation identification
+deactivate UI
+
+FCO -> UI : Provides simulation identification
+
+activate UI
+UI -> CTRL : generateReport(request)
+
+activate CTRL
+CTRL -> Service : generateReport(request)
+
+activate Service
+Service -> AuthzService : isAuthorized(currentUser, GENERATE_SIMULATION_REPORT)
+
+activate AuthzService
+AuthzService --> Service : true/false
+deactivate AuthzService
+
+alt FCO is authorized
+
+    Service -> SimulationRepo : findById(request.simulationId)
+
+    activate SimulationRepo
+    SimulationRepo --> Service : Optional<Simulation>
+    deactivate SimulationRepo
+
+    alt simulation exists
+
+        Service -> CRunner : requestReport(simulationId)
+
+        activate CRunner
+        CRunner -> ReportThread : generateReportSnapshot()
+
+        activate ReportThread
+
+        ReportThread -> SharedAccessor : readSimulationConfiguration()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : simulationConfiguration
+        deactivate SharedAccessor
+
+        ReportThread -> SharedAccessor : readFlightStatuses()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : flightStatuses
+        deactivate SharedAccessor
+
+        ReportThread -> SharedAccessor : readPositionHistory()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : positionHistory
+        deactivate SharedAccessor
+
+        ReportThread -> SharedAccessor : readSafetyViolations()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : safetyViolations
+        deactivate SharedAccessor
+
+        ReportThread -> SharedAccessor : readWarnings()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : warnings
+        deactivate SharedAccessor
+
+        ReportThread -> SharedAccessor : readErrors()
+
+        activate SharedAccessor
+        SharedAccessor --> ReportThread : errors
+        deactivate SharedAccessor
+
+        ReportThread -> ReportBuilder : addSimulationConfiguration(simulationConfiguration)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : added
+        deactivate ReportBuilder
+
+        ReportThread -> ReportBuilder : addFlightSummaries(flightStatuses)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : added
+        deactivate ReportBuilder
+
+        ReportThread -> ReportBuilder : addPositionSummaries(positionHistory)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : added
+        deactivate ReportBuilder
+
+        ReportThread -> ReportBuilder : addSafetyViolations(safetyViolations)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : added
+        deactivate ReportBuilder
+
+        ReportThread -> ReportBuilder : addWarningsAndErrors(warnings, errors)
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : added
+        deactivate ReportBuilder
+
+        ReportThread -> ReportBuilder : build()
+
+        activate ReportBuilder
+        ReportBuilder --> ReportThread : SimulationReport
+        deactivate ReportBuilder
+
+        ReportThread -> Formatter : format(report)
+
+        activate Formatter
+        Formatter --> ReportThread : formattedReport
+        deactivate Formatter
+
+        ReportThread --> CRunner : CReportOutput
+        deactivate ReportThread
+
+        CRunner --> Service : CReportOutput
+        deactivate CRunner
+
+        Service -> Parser : parse(output)
+
+        activate Parser
+        Parser --> Service : SimulationReportDTO
+        deactivate Parser
+
+        Service --> CTRL : SimulationReportDTO
+        CTRL --> UI : Simulation report
+        UI --> FCO : Display simulation report
+
+    else simulation does not exist
+
+        Service --> CTRL : Report generation failed
+        CTRL --> UI : Error
+        UI --> FCO : Display simulation not found message
+
+    end
+
+else FCO is not authorized
+
+    Service --> CTRL : Access denied
+    CTRL --> UI : Error
+    UI --> FCO : Display access denied message
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate FCO
+
+@enduml

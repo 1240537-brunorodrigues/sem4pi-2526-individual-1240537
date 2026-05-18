@@ -1,0 +1,61 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":System" as System
+participant ":Report Generation Thread" as ReportThread
+participant ":Shared Memory" as SharedMemory
+participant ":Simulation Report" as Report
+
+activate FCO
+
+FCO -> System : Requests simulation report
+
+activate System
+System --> System : Check if FCO is authenticated and authorized
+System --> System : Validate selected simulation
+System -> ReportThread : Request report generation
+
+activate ReportThread
+ReportThread -> SharedMemory : Read simulation configuration
+activate SharedMemory
+SharedMemory --> ReportThread : Simulation configuration
+deactivate SharedMemory
+
+ReportThread -> SharedMemory : Read included flights and process statuses
+activate SharedMemory
+SharedMemory --> ReportThread : Flights and process statuses
+deactivate SharedMemory
+
+ReportThread -> SharedMemory : Read aircraft position history
+activate SharedMemory
+SharedMemory --> ReportThread : Position history
+deactivate SharedMemory
+
+ReportThread -> SharedMemory : Read safety violation events
+activate SharedMemory
+SharedMemory --> ReportThread : Safety violation events
+deactivate SharedMemory
+
+ReportThread -> Report : Compile simulation report
+activate Report
+Report --> ReportThread : Report compiled
+deactivate Report
+
+ReportThread --> System : Simulation report
+deactivate ReportThread
+
+alt report generated successfully
+    System --> FCO : Display simulation report
+else report generation fails
+    System --> FCO : Display report generation error
+end
+
+deactivate System
+deactivate FCO
+
+@enduml

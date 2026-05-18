@@ -1,0 +1,216 @@
+@startuml
+title US109-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class GenerateSimulationReportUI {
+        - simulationId: String
+        + requestData()
+        + displayReport(report: SimulationReportDTO)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class GenerateSimulationReportController {
+        + generateReport(request: GenerateSimulationReportRequest): SimulationReportDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class GenerateSimulationReportService {
+        + generateReport(request: GenerateSimulationReportRequest): SimulationReportDTO
+    }
+
+    class AuthorizationService {
+        + isAuthorized(user: User, permission: Permission): boolean
+    }
+
+    class GenerateSimulationReportRequest {
+        - simulationId: String
+    }
+
+    class SimulationReportDTO {
+        - simulationId: String
+        - generatedAt: LocalDateTime
+        - status: String
+        - finalOutcome: String
+        - flightSummaries: List<FlightSummaryDTO>
+        - positionSummaries: List<PositionSummaryDTO>
+        - safetyViolations: List<SafetyViolationDTO>
+        - warnings: List<String>
+        - errors: List<String>
+    }
+
+    class FlightSummaryDTO {
+        - flightId: String
+        - aircraftId: String
+        - processStatus: String
+    }
+
+    class PositionSummaryDTO {
+        - aircraftId: String
+        - totalPositions: int
+        - firstPosition: String
+        - lastPosition: String
+    }
+
+    class SafetyViolationDTO {
+        - violationId: String
+        - timestamp: long
+        - involvedAircraftIds: List<String>
+        - severity: String
+        - description: String
+    }
+}
+
+package "integration.c" #DDDDDD {
+    class CReportGenerationRunner {
+        + requestReport(simulationId: String): CReportOutput
+    }
+
+    class CReportOutput {
+        - exitCode: int
+        - stdout: String
+        - stderr: String
+    }
+
+    class SimulationReportOutputParser {
+        + parse(output: CReportOutput): SimulationReportDTO
+    }
+}
+
+package "domain" #DDDDDD {
+    class User {
+        - email: Email
+        - roles: List<Role>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Role {
+        - name: String
+        - permissions: List<Permission>
+    }
+
+    class Permission {
+        - name: String
+    }
+
+    class Simulation {
+        - simulationId: String
+        - status: String
+        - startedAt: LocalDateTime
+        - endedAt: LocalDateTime
+    }
+
+    class SimulationReport {
+        - reportId: String
+        - generatedAt: LocalDateTime
+        - status: String
+        - finalOutcome: String
+    }
+
+    class Email {
+        - value: String
+    }
+}
+
+package "repository" #DDDDDD {
+    interface SimulationRepository {
+        + findById(simulationId: String): Optional<Simulation>
+    }
+}
+
+package "c.simulation.report" #DDDDDD {
+    class ReportGenerationThread {
+        + run()
+        + generateReportSnapshot()
+    }
+
+    class ReportDataBuilder {
+        + addSimulationConfiguration()
+        + addFlightSummaries()
+        + addPositionSummaries()
+        + addSafetyViolations()
+        + addWarningsAndErrors()
+        + build(): SimulationReport
+    }
+
+    class SimulationReportFormatter {
+        + format(report: SimulationReport): String
+    }
+}
+
+package "c.simulation.shared" #DDDDDD {
+    class SharedMemoryAccessor {
+        + readSimulationConfiguration()
+        + readFlightStatuses()
+        + readPositionHistory()
+        + readSafetyViolations()
+        + readWarnings()
+        + readErrors()
+    }
+
+    class SharedSimulationData {
+        - aircraftPositions: AircraftPosition[]
+        - safetyViolations: SafetyViolation[]
+        - processStatuses: String[]
+        - warnings: String[]
+        - errors: String[]
+    }
+
+    class AircraftPosition {
+        - aircraftId: String
+        - timestamp: long
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+
+    class SafetyViolation {
+        - violationId: String
+        - timestamp: long
+        - description: String
+    }
+}
+
+package "c.simulation.logging" #DDDDDD {
+    class SimulationLogger {
+        + logInfo(message: String)
+        + logError(message: String)
+    }
+}
+
+GenerateSimulationReportUI --> GenerateSimulationReportController : uses >
+GenerateSimulationReportController --> GenerateSimulationReportService : uses >
+GenerateSimulationReportService --> AuthorizationService : checks permission >
+GenerateSimulationReportService --> SimulationRepository : retrieves simulation >
+GenerateSimulationReportService --> CReportGenerationRunner : requests C report >
+GenerateSimulationReportService --> SimulationReportOutputParser : parses output >
+GenerateSimulationReportService --> SimulationReportDTO : returns >
+
+CReportGenerationRunner --> CReportOutput : returns >
+SimulationReportOutputParser --> SimulationReportDTO : creates >
+
+AuthorizationService --> User : checks >
+User "1" o-- "1..*" Role
+Role "1" o-- "*" Permission
+User *-- Email
+
+ReportGenerationThread --> SharedMemoryAccessor : reads >
+ReportGenerationThread --> ReportDataBuilder : builds >
+ReportDataBuilder --> SimulationReport : creates >
+ReportDataBuilder --> SimulationReportFormatter : may format >
+ReportGenerationThread --> SimulationLogger : logs >
+
+SharedMemoryAccessor --> SharedSimulationData : accesses >
+SharedSimulationData "1" o-- "*" AircraftPosition
+SharedSimulationData "1" o-- "*" SafetyViolation
+
+SimulationRepository --> Simulation : returns >
+
+@enduml

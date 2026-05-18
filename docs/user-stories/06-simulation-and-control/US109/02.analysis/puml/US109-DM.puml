@@ -1,0 +1,104 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class Simulation {
+    simulationId
+    status
+    startedAt
+    endedAt
+}
+
+class SimulationConfiguration {
+    timeStepInterval
+    geographicArea
+    safetyThresholds
+    performanceSettings
+}
+
+class ReportGenerationThread {
+    threadId
+    status
+}
+
+class SimulationReport {
+    reportId
+    generatedAt
+    status
+    finalOutcome
+}
+
+class FlightSummary {
+    flightId
+    aircraftId
+    processStatus
+}
+
+class PositionSummary {
+    aircraftId
+    totalPositions
+    firstPosition
+    lastPosition
+}
+
+class SafetyViolationSummary {
+    totalViolations
+}
+
+class SafetyViolationEvent {
+    violationId
+    timestamp
+    involvedAircraftIds
+    severity
+    description
+}
+
+class SimulationWarning {
+    timestamp
+    message
+}
+
+class SimulationError {
+    timestamp
+    message
+}
+
+class SharedSimulationData {
+    aircraftPositions
+    safetyViolations
+    processStatuses
+    warnings
+    errors
+}
+
+FlightControlOperator "1" -- "*" SimulationReport : requests >
+Simulation "1" -- "1" SimulationConfiguration : uses >
+Simulation "1" -- "1" SharedSimulationData : produces >
+ReportGenerationThread "1" -- "1" SharedSimulationData : reads >
+ReportGenerationThread "1" -- "*" SimulationReport : generates >
+
+SimulationReport "1" -- "1" Simulation : describes >
+SimulationReport "1" o-- "*" FlightSummary : includes >
+SimulationReport "1" o-- "*" PositionSummary : includes >
+SimulationReport "1" -- "1" SafetyViolationSummary : includes >
+SimulationReport "1" o-- "*" SafetyViolationEvent : includes >
+SimulationReport "1" o-- "*" SimulationWarning : includes >
+SimulationReport "1" o-- "*" SimulationError : includes >
+
+SharedSimulationData "1" o-- "*" SafetyViolationEvent
+SharedSimulationData "1" o-- "*" SimulationWarning
+SharedSimulationData "1" o-- "*" SimulationError
+
+@enduml
