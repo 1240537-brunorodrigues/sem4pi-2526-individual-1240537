@@ -1,0 +1,96 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class WebBrowser {
+    userAgent
+}
+
+class FlightsLoggingServer {
+    host
+    udpPort
+    httpPort
+    status
+}
+
+class HTTPServer {
+    port
+    status
+}
+
+class StatusPage {
+    url
+    autoRefreshEnabled
+}
+
+class AJAXRequest {
+    endpoint
+    interval
+}
+
+class FlightProgressStore {
+    lastUpdatedAt
+}
+
+class FlightProgressUpdate {
+    flightId
+    aircraftId
+    simulationStep
+    timestamp
+    latitude
+    longitude
+    altitude
+    velocityVector
+    status
+}
+
+class FlightProgressTable {
+    rows
+}
+
+class FlightProgressRow {
+    flightId
+    aircraftId
+    simulationStep
+    position
+    altitude
+    velocity
+    status
+}
+
+class UDPReceiver {
+    port
+    status
+}
+
+FlightControlOperator "1" -- "1" WebBrowser : uses >
+WebBrowser "1" -- "1" StatusPage : displays >
+StatusPage "1" -- "*" AJAXRequest : sends >
+AJAXRequest "*" -- "1" HTTPServer : requests data from >
+
+FlightsLoggingServer "1" -- "1" HTTPServer : contains >
+FlightsLoggingServer "1" -- "1" UDPReceiver : contains >
+FlightsLoggingServer "1" -- "1" FlightProgressStore : maintains >
+
+UDPReceiver "1" -- "*" FlightProgressUpdate : receives >
+FlightProgressStore "1" o-- "*" FlightProgressUpdate : stores latest >
+
+HTTPServer "1" -- "1" StatusPage : serves >
+HTTPServer "1" -- "1" FlightProgressStore : reads >
+StatusPage "1" -- "1" FlightProgressTable : renders >
+FlightProgressTable "1" o-- "*" FlightProgressRow : contains >
+FlightProgressRow "*" -- "1" FlightProgressUpdate : represents >
+
+@enduml

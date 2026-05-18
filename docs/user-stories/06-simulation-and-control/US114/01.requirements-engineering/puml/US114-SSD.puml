@@ -1,0 +1,73 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":Web Browser" as Browser
+participant ":Flights Logging Server" as LoggingServer
+participant ":HTTP Server" as HTTPServer
+participant ":Flight Progress Store" as ProgressStore
+participant ":Flight Process" as FlightProcess
+participant ":UDP Receiver" as UDPReceiver
+
+activate FCO
+
+FCO -> Browser : Opens simulated flights status page
+
+activate Browser
+
+LoggingServer -> HTTPServer : start()
+
+activate HTTPServer
+HTTPServer --> LoggingServer : HTTP server started
+deactivate HTTPServer
+
+LoggingServer -> UDPReceiver : startListeningForProgressUpdates()
+
+activate UDPReceiver
+UDPReceiver --> LoggingServer : UDP receiver started
+
+Browser -> HTTPServer : GET /status
+
+activate HTTPServer
+HTTPServer --> Browser : Return status page HTML/JS
+deactivate HTTPServer
+
+Browser --> FCO : Display initial status page
+
+loop for each simulation step while flights are running
+
+    activate FlightProcess
+    FlightProcess -> UDPReceiver : sendProgressDatagram(flightProgressDTO)
+    deactivate FlightProcess
+
+    UDPReceiver -> ProgressStore : storeProgressUpdate(flightProgressDTO)
+
+    activate ProgressStore
+    ProgressStore --> UDPReceiver : progress stored
+    deactivate ProgressStore
+
+    Browser -> HTTPServer : AJAX GET /api/flights/progress
+
+    activate HTTPServer
+    HTTPServer -> ProgressStore : getCurrentFlightProgress()
+
+    activate ProgressStore
+    ProgressStore --> HTTPServer : currentFlightProgressDTOs
+    deactivate ProgressStore
+
+    HTTPServer --> Browser : Return updated progress data
+    deactivate HTTPServer
+
+    Browser --> Browser : Update progress table without reloading page
+
+end
+
+deactivate UDPReceiver
+deactivate Browser
+deactivate FCO
+
+@enduml

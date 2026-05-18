@@ -1,0 +1,113 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "WebBrowser" as Browser
+participant "HTTPServer" as HTTPServer
+participant "StatusPageController" as StatusController
+participant "StatusPageRenderer" as PageRenderer
+participant "AJAXClientScript" as AJAXScript
+participant "FlightProgressApiController" as ApiController
+participant "FlightProgressStore" as ProgressStore
+participant "FlightProgressDTOMapper" as DTOMapper
+participant "FlightProgressTableRenderer" as TableRenderer
+participant "UDPReceiver" as UDPReceiver
+participant "FlightProcess" as FlightProcess
+
+activate FCO
+
+FCO -> Browser : Opens status page URL
+
+activate Browser
+Browser -> HTTPServer : GET /status
+
+activate HTTPServer
+HTTPServer -> StatusController : getStatusPage()
+
+activate StatusController
+StatusController -> PageRenderer : render()
+
+activate PageRenderer
+PageRenderer --> StatusController : HTML page with AJAX script
+deactivate PageRenderer
+
+StatusController --> HTTPServer : HttpResponse(HTML)
+deactivate StatusController
+
+HTTPServer --> Browser : Status page
+deactivate HTTPServer
+
+Browser --> FCO : Display status page
+Browser -> AJAXScript : load and start polling script
+
+activate AJAXScript
+activate UDPReceiver
+
+loop while simulation is running
+    FlightProcess -> UDPReceiver : Send UDP flight progress datagram
+
+    activate UDPReceiver
+    UDPReceiver -> ProgressStore : update(flightProgressUpdate)
+
+    activate ProgressStore
+    ProgressStore --> UDPReceiver : progress updated
+    deactivate ProgressStore
+
+    deactivate UDPReceiver
+end
+
+loop while status page is open
+    AJAXScript -> HTTPServer : AJAX GET /api/flights/progress
+
+    activate HTTPServer
+    HTTPServer -> ApiController : getCurrentProgress()
+
+    activate ApiController
+    ApiController -> ProgressStore : getCurrentProgress()
+
+    activate ProgressStore
+    ProgressStore --> ApiController : currentProgressUpdates
+    deactivate ProgressStore
+
+    alt progress data exists
+        ApiController -> DTOMapper : toDTO(currentProgressUpdates)
+
+        activate DTOMapper
+        DTOMapper --> ApiController : flightProgressDTOs
+        deactivate DTOMapper
+
+        ApiController --> HTTPServer : HttpResponse(JSON progress data)
+        HTTPServer --> AJAXScript : JSON progress data
+
+        AJAXScript -> TableRenderer : renderRows(flightProgressDTOs)
+
+        activate TableRenderer
+        TableRenderer --> AJAXScript : table updated
+        deactivate TableRenderer
+
+    else no running flights or no data
+        ApiController --> HTTPServer : HttpResponse(JSON empty list)
+        HTTPServer --> AJAXScript : JSON empty list
+
+        AJAXScript -> TableRenderer : showEmptyState()
+
+        activate TableRenderer
+        TableRenderer --> AJAXScript : empty state displayed
+        deactivate TableRenderer
+    end
+
+    deactivate ApiController
+    deactivate HTTPServer
+end
+
+deactivate UDPReceiver
+deactivate AJAXScript
+deactivate Browser
+deactivate FCO
+
+@enduml
