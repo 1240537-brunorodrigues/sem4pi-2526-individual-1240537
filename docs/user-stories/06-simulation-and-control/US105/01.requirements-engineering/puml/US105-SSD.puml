@@ -1,0 +1,84 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant ":System" as System
+participant ":Hybrid Simulation Environment" as HybridEnv
+participant ":Parent Simulation Process" as ParentProcess
+participant ":Shared Memory Segment" as SharedMemory
+participant ":Flight Process" as FlightProcess
+
+activate FCO
+
+FCO -> System : Requests to start hybrid simulation
+
+activate System
+System --> FCO : Requests simulation configuration
+deactivate System
+
+FCO -> System : Provides simulation configuration
+
+activate System
+System --> System : Validate simulation configuration
+
+alt valid configuration and initialization succeeds
+
+    System -> HybridEnv : Initialize hybrid simulation environment
+
+    activate HybridEnv
+    HybridEnv -> ParentProcess : Initialize parent process
+
+    activate ParentProcess
+    ParentProcess --> ParentProcess : Configure signal handlers
+    ParentProcess --> ParentProcess : Initialize mutexes
+    ParentProcess --> ParentProcess : Initialize condition variables
+    ParentProcess --> ParentProcess : Spawn dedicated threads
+
+    ParentProcess -> SharedMemory : Allocate shared memory segment
+
+    activate SharedMemory
+    SharedMemory --> ParentProcess : Shared memory allocated
+    deactivate SharedMemory
+
+    ParentProcess -> SharedMemory : Initialize shared simulation data
+
+    activate SharedMemory
+    SharedMemory --> ParentProcess : Shared memory initialized
+    deactivate SharedMemory
+
+    ParentProcess --> ParentProcess : Initialize semaphores
+
+    loop for each flight
+        ParentProcess -> FlightProcess : fork independent flight process
+
+        activate FlightProcess
+        FlightProcess --> FlightProcess : Attach to shared memory
+        FlightProcess --> FlightProcess : Configure semaphores
+        FlightProcess --> FlightProcess : Configure signal handlers
+        FlightProcess --> ParentProcess : Flight process initialized
+        deactivate FlightProcess
+    end
+
+    ParentProcess --> HybridEnv : Hybrid environment initialized
+    deactivate ParentProcess
+
+    HybridEnv --> System : Initialization successful
+    deactivate HybridEnv
+
+    System --> FCO : Display simulation started message
+
+else invalid configuration or initialization fails
+
+    System --> System : Clean up allocated resources
+    System --> FCO : Display initialization error
+
+end
+
+deactivate System
+deactivate FCO
+
+@enduml

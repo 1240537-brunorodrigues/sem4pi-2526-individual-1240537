@@ -1,0 +1,93 @@
+@startuml
+
+hide class
+hide circle
+hide methods
+hide empty members
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class FlightControlOperator {
+    email
+    role
+}
+
+class HybridSimulationEnvironment {
+    status
+}
+
+class SimulationConfiguration {
+    numberOfFlights
+    timeStepInterval
+    sharedMemoryCapacity
+}
+
+class ParentSimulationProcess {
+    processId
+    status
+}
+
+class DedicatedThread {
+    threadId
+    functionName
+    status
+}
+
+class FlightProcess {
+    processId
+    flightId
+    status
+}
+
+class SharedMemorySegment {
+    name
+    size
+    initialized
+}
+
+class SharedSimulationData {
+    currentTimeStep
+    aircraftPositions
+    safetyViolations
+    simulationStatus
+}
+
+class SemaphoreSet {
+    semaphores
+}
+
+class Mutex {
+    locked
+}
+
+class ConditionVariable {
+    waitingThreads
+}
+
+class SignalHandler {
+    signalType
+    configured
+}
+
+class ResourceCleanup {
+    completed
+}
+
+FlightControlOperator "1" -- "*" HybridSimulationEnvironment : starts >
+HybridSimulationEnvironment "1" -- "1" SimulationConfiguration : uses >
+HybridSimulationEnvironment "1" -- "1" ParentSimulationProcess : initializes >
+ParentSimulationProcess "1" -- "1..*" DedicatedThread : spawns >
+ParentSimulationProcess "1" -- "1..*" FlightProcess : forks >
+HybridSimulationEnvironment "1" -- "1" SharedMemorySegment : allocates >
+SharedMemorySegment "1" -- "1" SharedSimulationData : contains >
+FlightProcess "*" -- "1" SharedMemorySegment : attaches to >
+HybridSimulationEnvironment "1" -- "1" SemaphoreSet : initializes >
+ParentSimulationProcess "1" -- "*" Mutex : uses >
+ParentSimulationProcess "1" -- "*" ConditionVariable : uses >
+ParentSimulationProcess "1" -- "*" SignalHandler : configures >
+FlightProcess "*" -- "*" SignalHandler : configures >
+HybridSimulationEnvironment "1" -- "0..1" ResourceCleanup : performs on failure >
+
+@enduml

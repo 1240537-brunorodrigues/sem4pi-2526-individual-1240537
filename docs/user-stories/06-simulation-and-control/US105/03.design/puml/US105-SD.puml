@@ -1,0 +1,179 @@
+@startuml
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+autonumber
+
+actor "Flight Control Operator" as FCO
+participant "StartHybridSimulationUI" as UI
+participant "StartHybridSimulationController" as CTRL
+participant "StartHybridSimulationService" as Service
+participant "HybridSimulationInputMapper" as InputMapper
+participant "CHybridSimulationRunner" as CRunner
+participant "HybridSimulationEnvironment" as HybridEnv
+participant "ParentSimulationProcess" as ParentProcess
+participant "SignalManager" as SignalManager
+participant "SynchronizationPrimitiveManager" as SyncManager
+participant "ParentThreadManager" as ThreadManager
+participant "SharedMemoryManager" as SharedMemoryManager
+participant "SemaphoreManager" as SemaphoreManager
+participant "FlightProcessLauncher" as ProcessLauncher
+participant "FlightProcess" as FlightProcess
+participant "ResourceCleanupManager" as CleanupManager
+
+activate FCO
+
+FCO -> UI : Requests to start hybrid simulation
+
+activate UI
+UI --> FCO : Requests simulation configuration
+deactivate UI
+
+FCO -> UI : Provides simulation configuration
+
+activate UI
+UI -> CTRL : startHybridSimulation(request)
+
+activate CTRL
+CTRL -> Service : startHybridSimulation(request)
+
+activate Service
+Service -> InputMapper : map(request)
+
+activate InputMapper
+InputMapper --> Service : HybridSimulationInput
+deactivate InputMapper
+
+Service -> CRunner : execute(input)
+
+activate CRunner
+CRunner -> HybridEnv : initialize(config)
+
+activate HybridEnv
+
+alt initialization succeeds
+
+    HybridEnv -> ParentProcess : initialize()
+
+    activate ParentProcess
+    ParentProcess -> SignalManager : configureParentHandlers()
+
+    activate SignalManager
+    SignalManager --> ParentProcess : configured
+    deactivate SignalManager
+
+    ParentProcess -> SyncManager : initializeMutexes()
+
+    activate SyncManager
+    SyncManager --> ParentProcess : mutexes initialized
+    deactivate SyncManager
+
+    ParentProcess -> SyncManager : initializeConditionVariables()
+
+    activate SyncManager
+    SyncManager --> ParentProcess : condition variables initialized
+    deactivate SyncManager
+
+    ParentProcess -> ThreadManager : createDedicatedThreads()
+
+    activate ThreadManager
+    ThreadManager --> ParentProcess : threads created
+    deactivate ThreadManager
+
+    ParentProcess -> SharedMemoryManager : allocate(sharedMemorySize)
+
+    activate SharedMemoryManager
+    SharedMemoryManager --> ParentProcess : shared memory allocated
+    deactivate SharedMemoryManager
+
+    ParentProcess -> SharedMemoryManager : attach()
+
+    activate SharedMemoryManager
+    SharedMemoryManager --> ParentProcess : shared memory attached
+    deactivate SharedMemoryManager
+
+    ParentProcess -> SharedMemoryManager : initialize(sharedSimulationData)
+
+    activate SharedMemoryManager
+    SharedMemoryManager --> ParentProcess : shared memory initialized
+    deactivate SharedMemoryManager
+
+    ParentProcess -> SemaphoreManager : initializeSemaphores(numberOfFlights)
+
+    activate SemaphoreManager
+    SemaphoreManager --> ParentProcess : semaphores initialized
+    deactivate SemaphoreManager
+
+    loop for each flight
+        ParentProcess -> ProcessLauncher : forkFlightProcess(flightConfig)
+
+        activate ProcessLauncher
+        ProcessLauncher -> FlightProcess ** : fork()
+
+        activate FlightProcess
+        FlightProcess -> SharedMemoryManager : attachToSharedMemory()
+
+        activate SharedMemoryManager
+        SharedMemoryManager --> FlightProcess : attached
+        deactivate SharedMemoryManager
+
+        FlightProcess -> SemaphoreManager : configureSemaphores()
+
+        activate SemaphoreManager
+        SemaphoreManager --> FlightProcess : configured
+        deactivate SemaphoreManager
+
+        FlightProcess -> SignalManager : configureChildHandlers()
+
+        activate SignalManager
+        SignalManager --> FlightProcess : handlers configured
+        deactivate SignalManager
+
+        FlightProcess --> ProcessLauncher : flight process initialized
+        deactivate FlightProcess
+
+        ProcessLauncher --> ParentProcess : child process created
+        deactivate ProcessLauncher
+    end
+
+    ParentProcess --> HybridEnv : parent process initialized
+    deactivate ParentProcess
+
+    HybridEnv --> CRunner : initialization successful
+    deactivate HybridEnv
+
+    CRunner --> Service : HybridSimulationOutput(success)
+    deactivate CRunner
+
+    Service --> CTRL : HybridSimulationDTO(success)
+    CTRL --> UI : Hybrid simulation started
+    UI --> FCO : Display success message
+
+else initialization fails
+
+    HybridEnv -> CleanupManager : cleanupAll()
+
+    activate CleanupManager
+    CleanupManager --> HybridEnv : resources cleaned
+    deactivate CleanupManager
+
+    HybridEnv --> CRunner : initialization failed
+    deactivate HybridEnv
+
+    CRunner --> Service : HybridSimulationOutput(error)
+    deactivate CRunner
+
+    Service --> CTRL : HybridSimulationDTO(error)
+    CTRL --> UI : Error
+    UI --> FCO : Display initialization error
+
+end
+
+deactivate Service
+deactivate CTRL
+deactivate UI
+deactivate FCO
+
+@enduml

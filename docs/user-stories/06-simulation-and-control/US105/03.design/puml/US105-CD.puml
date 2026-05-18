@@ -1,0 +1,204 @@
+@startuml
+title US105-CD
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "ui.console" #DDDDDD {
+    class StartHybridSimulationUI {
+        - simulationConfiguration: SimulationConfigurationDTO
+        + requestData()
+        + displayMessage(message: String)
+        + displayError(message: String)
+    }
+}
+
+package "controller" #DDDDDD {
+    class StartHybridSimulationController {
+        + startHybridSimulation(request: StartHybridSimulationRequest): HybridSimulationDTO
+    }
+}
+
+package "application" #DDDDDD {
+    class StartHybridSimulationService {
+        + startHybridSimulation(request: StartHybridSimulationRequest): HybridSimulationDTO
+    }
+
+    class StartHybridSimulationRequest {
+        - numberOfFlights: int
+        - timeStepInterval: int
+        - sharedMemoryCapacity: int
+        - flightIds: List<String>
+    }
+
+    class SimulationConfigurationDTO {
+        - numberOfFlights: int
+        - timeStepInterval: int
+        - sharedMemoryCapacity: int
+    }
+
+    class HybridSimulationDTO {
+        - success: boolean
+        - status: String
+        - message: String
+    }
+}
+
+package "integration.c" #DDDDDD {
+    class HybridSimulationInputMapper {
+        + map(request: StartHybridSimulationRequest): HybridSimulationInput
+    }
+
+    class CHybridSimulationRunner {
+        + execute(input: HybridSimulationInput): HybridSimulationOutput
+    }
+
+    class HybridSimulationInput {
+        - numberOfFlights: int
+        - timeStepInterval: int
+        - sharedMemoryCapacity: int
+        - flightData: String
+    }
+
+    class HybridSimulationOutput {
+        - exitCode: int
+        - stdout: String
+        - stderr: String
+    }
+}
+
+package "c.simulation.core" #DDDDDD {
+    class HybridSimulationEnvironment {
+        + initialize(config: SimulationConfig): int
+        + start()
+        + shutdown()
+    }
+
+    class SimulationConfig {
+        - numberOfFlights: int
+        - timeStepInterval: int
+        - sharedMemorySize: int
+    }
+
+    class ParentSimulationProcess {
+        - processId: int
+        + initialize()
+        + startThreads()
+        + forkFlightProcesses()
+    }
+
+    class SharedSimulationData {
+        - currentTimeStep: int
+        - simulationStatus: int
+        - aircraftPositions: AircraftPosition[]
+        - safetyViolations: SafetyViolation[]
+    }
+}
+
+package "c.simulation.resources" #DDDDDD {
+    class SharedMemoryManager {
+        + allocate(size: int): int
+        + attach(): void*
+        + initialize(data: SharedSimulationData): int
+        + detach()
+        + destroy()
+    }
+
+    class SemaphoreManager {
+        + initializeSemaphores(numberOfFlights: int): int
+        + destroySemaphores()
+    }
+
+    class SynchronizationPrimitiveManager {
+        + initializeMutexes(): int
+        + initializeConditionVariables(): int
+        + destroyMutexes()
+        + destroyConditionVariables()
+    }
+
+    class SignalManager {
+        + configureParentHandlers(): int
+        + configureChildHandlers(): int
+    }
+
+    class ResourceCleanupManager {
+        + cleanupAll()
+    }
+}
+
+package "c.simulation.thread" #DDDDDD {
+    class ParentThreadManager {
+        + createDedicatedThreads(): int
+        + joinThreads()
+    }
+
+    class DedicatedThread {
+        - threadId: long
+        - functionName: String
+        - status: int
+    }
+}
+
+package "c.simulation.process" #DDDDDD {
+    class FlightProcessLauncher {
+        + forkFlightProcesses(numberOfFlights: int): int
+    }
+
+    class FlightProcess {
+        - processId: int
+        - flightId: String
+        + attachToSharedMemory()
+        + configureSemaphores()
+        + configureSignalHandlers()
+    }
+}
+
+package "c.simulation.model" #DDDDDD {
+    class AircraftPosition {
+        - aircraftId: String
+        - latitude: double
+        - longitude: double
+        - altitude: double
+    }
+
+    class SafetyViolation {
+        - timestamp: long
+        - description: String
+    }
+}
+
+StartHybridSimulationUI --> StartHybridSimulationController : uses >
+StartHybridSimulationController --> StartHybridSimulationService : uses >
+StartHybridSimulationService --> HybridSimulationInputMapper : maps input >
+StartHybridSimulationService --> CHybridSimulationRunner : executes C component >
+
+HybridSimulationInputMapper --> HybridSimulationInput : creates >
+CHybridSimulationRunner --> HybridSimulationOutput : returns >
+StartHybridSimulationService --> HybridSimulationDTO : returns >
+
+HybridSimulationEnvironment --> ParentSimulationProcess : initializes >
+HybridSimulationEnvironment --> SharedMemoryManager : allocates/initializes >
+HybridSimulationEnvironment --> SemaphoreManager : initializes >
+HybridSimulationEnvironment --> SynchronizationPrimitiveManager : initializes >
+HybridSimulationEnvironment --> SignalManager : configures >
+HybridSimulationEnvironment --> ResourceCleanupManager : cleans up >
+HybridSimulationEnvironment --> SimulationConfig : uses >
+
+ParentSimulationProcess --> ParentThreadManager : creates threads >
+ParentSimulationProcess --> FlightProcessLauncher : forks children >
+ParentSimulationProcess --> SharedSimulationData : initializes >
+
+ParentThreadManager "1" o-- "*" DedicatedThread
+FlightProcessLauncher "1" o-- "*" FlightProcess
+
+SharedMemoryManager --> SharedSimulationData : stores >
+SharedSimulationData "1" o-- "*" AircraftPosition
+SharedSimulationData "1" o-- "*" SafetyViolation
+
+FlightProcess --> SharedMemoryManager : attaches >
+FlightProcess --> SemaphoreManager : uses >
+FlightProcess --> SignalManager : configures handlers >
+
+@enduml
