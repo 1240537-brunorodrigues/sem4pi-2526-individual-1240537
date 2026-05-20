@@ -9,11 +9,13 @@ public class MainMenuUI {
     private final Scanner scanner;
     private final AuthenticationUI authenticationUI;
     private final RegisterUserUI registerUserUI;
+    private final ListUsersUI listUsersUI;
     private final AuthorizationService authorizationService;
 
     public MainMenuUI(
             AuthenticationUI authenticationUI,
             RegisterUserUI registerUserUI,
+            ListUsersUI listUsersUI,
             AuthorizationService authorizationService,
             Scanner scanner
     ) {
@@ -23,6 +25,10 @@ public class MainMenuUI {
 
         if (registerUserUI == null) {
             throw new IllegalArgumentException("Register user UI cannot be null.");
+        }
+
+        if (listUsersUI == null) {
+            throw new IllegalArgumentException("List users UI cannot be null.");
         }
 
         if (authorizationService == null) {
@@ -35,6 +41,7 @@ public class MainMenuUI {
 
         this.authenticationUI = authenticationUI;
         this.registerUserUI = registerUserUI;
+        this.listUsersUI = listUsersUI;
         this.authorizationService = authorizationService;
         this.scanner = scanner;
     }
@@ -50,6 +57,7 @@ public class MainMenuUI {
                 case 1 -> authenticationUI.login();
                 case 2 -> runRegisterUser();
                 case 3 -> authenticationUI.logout();
+                case 4 -> runListUsers();
                 case 0 -> System.out.println("Exiting application...");
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -69,6 +77,16 @@ public class MainMenuUI {
         }
     }
 
+    private void runListUsers() {
+        try {
+            authorizationService.requirePermission("LIST_USERS");
+            listUsersUI.run();
+        } catch (SecurityException exception) {
+            System.out.println("Access denied.");
+            System.out.println("Reason: " + exception.getMessage());
+        }
+    }
+
     private void showMenu() {
         System.out.println("=================================");
         System.out.println("        AlSafe Backoffice        ");
@@ -76,6 +94,7 @@ public class MainMenuUI {
         System.out.println("1 - Login");
         System.out.println("2 - Register User");
         System.out.println("3 - Logout");
+        System.out.println("4 - List Users");
         System.out.println("0 - Exit");
         System.out.print("Choose an option: ");
     }
