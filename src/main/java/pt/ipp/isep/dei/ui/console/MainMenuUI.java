@@ -5,7 +5,21 @@ import java.util.Scanner;
 
 public class MainMenuUI {
 
-    private final Scanner scanner = new Scanner(System.in);
+    private final Scanner scanner;
+    private final RegisterUserUI registerUserUI;
+
+    public MainMenuUI(RegisterUserUI registerUserUI, Scanner scanner) {
+        if (registerUserUI == null) {
+            throw new IllegalArgumentException("RegisterUserUI cannot be null");
+        }
+
+        if (scanner == null) {
+            throw new IllegalArgumentException("Scanner cannot be null");
+        }
+
+        this.registerUserUI = registerUserUI;
+        this.scanner = scanner;
+    }
 
     public void run() {
         int option;
@@ -16,6 +30,7 @@ public class MainMenuUI {
 
             switch (option) {
                 case 1 -> System.out.println("Login selected. Not implemented yet.");
+                case 2 -> registerUserUI.run();
                 case 0 -> System.out.println("Exiting application...");
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -29,6 +44,7 @@ public class MainMenuUI {
         System.out.println("        AlSafe Backoffice        ");
         System.out.println("=================================");
         System.out.println("1. Login");
+        System.out.println("2. Register User");
         System.out.println("0. Exit");
         System.out.println("Choose an option: ");
     }
