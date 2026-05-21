@@ -14,6 +14,7 @@ public class Main {
         UserRepository userRepository = new InMemoryUserRepository();
         RoleRepository roleRepository = new InMemoryRoleRepository();
         AirControlAreaRepository airControlAreaRepository = new InMemoryAirControlAreaRepository();
+        AirportRepository airportRepository = new InMemoryAirportRepository();
 
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
@@ -49,6 +50,12 @@ public class Main {
                 authorizationService
         );
 
+        CreateAirportService createAirportService = new CreateAirportService(
+                airportRepository,
+                airControlAreaRepository,
+                authorizationService
+        );
+
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);
         ListUsersController listUsersController = new ListUsersController(listUsersService);
@@ -56,6 +63,8 @@ public class Main {
         DisableUserController disableUserController = new DisableUserController(disableUserService);
         RegisterAirControlAreaController registerAirControlAreaController =
                 new RegisterAirControlAreaController(registerAirControlAreaService);
+        CreateAirportController createAirportController =
+                new CreateAirportController(createAirportService);
 
         Scanner scanner = new Scanner(System.in);
 
@@ -71,6 +80,10 @@ public class Main {
                 registerAirControlAreaController,
                 scanner
         );
+        CreateAirportUI createAirportUI = new CreateAirportUI(
+                createAirportController,
+                scanner
+        );
 
         MainMenuUI menu = new MainMenuUI(
                 authenticationUI,
@@ -78,6 +91,7 @@ public class Main {
                 listUsersUI,
                 enableDisableUserUI,
                 registerAirControlAreaUI,
+                createAirportUI,
                 authorizationService,
                 scanner
         );

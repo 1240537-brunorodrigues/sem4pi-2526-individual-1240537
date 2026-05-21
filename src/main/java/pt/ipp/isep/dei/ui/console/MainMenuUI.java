@@ -12,6 +12,7 @@ public class MainMenuUI {
     private final ListUsersUI listUsersUI;
     private final EnableDisableUserUI enableDisableUserUI;
     private final RegisterAirControlAreaUI registerAirControlAreaUI;
+    private final CreateAirportUI createAirportUI;
     private final AuthorizationService authorizationService;
 
     public MainMenuUI(
@@ -20,6 +21,7 @@ public class MainMenuUI {
             ListUsersUI listUsersUI,
             EnableDisableUserUI enableDisableUserUI,
             RegisterAirControlAreaUI registerAirControlAreaUI,
+            CreateAirportUI createAirportUI,
             AuthorizationService authorizationService,
             Scanner scanner
     ) {
@@ -43,6 +45,10 @@ public class MainMenuUI {
             throw new IllegalArgumentException("Register air control area UI cannot be null.");
         }
 
+        if (createAirportUI == null) {
+            throw new IllegalArgumentException("Create airport UI cannot be null.");
+        }
+
         if (authorizationService == null) {
             throw new IllegalArgumentException("Authorization service cannot be null.");
         }
@@ -56,6 +62,7 @@ public class MainMenuUI {
         this.listUsersUI = listUsersUI;
         this.enableDisableUserUI = enableDisableUserUI;
         this.registerAirControlAreaUI = registerAirControlAreaUI;
+        this.createAirportUI = createAirportUI;
         this.authorizationService = authorizationService;
         this.scanner = scanner;
     }
@@ -75,6 +82,7 @@ public class MainMenuUI {
                 case 5 -> runEnableUser();
                 case 6 -> runDisableUser();
                 case 7 -> runRegisterAirControlArea();
+                case 8 -> runCreateAirport();
                 case 0 -> System.out.println("Exiting application...");
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -129,6 +137,15 @@ public class MainMenuUI {
         }
     }
 
+    private void runCreateAirport() {
+        try {
+            authorizationService.requirePermission("CREATE_AIRPORT");
+            createAirportUI.run();
+        } catch (SecurityException exception) {
+            displayAccessDenied(exception);
+        }
+    }
+
     private void displayAccessDenied(SecurityException exception) {
         System.out.println("Access denied.");
         System.out.println("Reason: " + exception.getMessage());
@@ -145,6 +162,7 @@ public class MainMenuUI {
         System.out.println("5 - Enable User");
         System.out.println("6 - Disable User");
         System.out.println("7 - Register Air Control Area");
+        System.out.println("8 - Create Airport");
         System.out.println("0 - Exit");
         System.out.print("Choose an option: ");
     }
