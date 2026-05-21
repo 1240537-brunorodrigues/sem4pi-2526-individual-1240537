@@ -10,12 +10,14 @@ public class MainMenuUI {
     private final AuthenticationUI authenticationUI;
     private final RegisterUserUI registerUserUI;
     private final ListUsersUI listUsersUI;
+    private final EnableDisableUserUI enableDisableUserUI;
     private final AuthorizationService authorizationService;
 
     public MainMenuUI(
             AuthenticationUI authenticationUI,
             RegisterUserUI registerUserUI,
             ListUsersUI listUsersUI,
+            EnableDisableUserUI enableDisableUserUI,
             AuthorizationService authorizationService,
             Scanner scanner
     ) {
@@ -31,6 +33,10 @@ public class MainMenuUI {
             throw new IllegalArgumentException("List users UI cannot be null.");
         }
 
+        if (enableDisableUserUI == null) {
+            throw new IllegalArgumentException("Enable/disable user UI cannot be null.");
+        }
+
         if (authorizationService == null) {
             throw new IllegalArgumentException("Authorization service cannot be null.");
         }
@@ -42,6 +48,7 @@ public class MainMenuUI {
         this.authenticationUI = authenticationUI;
         this.registerUserUI = registerUserUI;
         this.listUsersUI = listUsersUI;
+        this.enableDisableUserUI = enableDisableUserUI;
         this.authorizationService = authorizationService;
         this.scanner = scanner;
     }
@@ -58,6 +65,8 @@ public class MainMenuUI {
                 case 2 -> runRegisterUser();
                 case 3 -> authenticationUI.logout();
                 case 4 -> runListUsers();
+                case 5 -> runEnableUser();
+                case 6 -> runDisableUser();
                 case 0 -> System.out.println("Exiting application...");
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -87,6 +96,26 @@ public class MainMenuUI {
         }
     }
 
+    private void runEnableUser() {
+        try {
+            authorizationService.requirePermission("ENABLE_USER");
+            enableDisableUserUI.enableUser();
+        } catch (SecurityException exception) {
+            System.out.println("Access denied.");
+            System.out.println("Reason: " + exception.getMessage());
+        }
+    }
+
+    private void runDisableUser() {
+        try {
+            authorizationService.requirePermission("DISABLE_USER");
+            enableDisableUserUI.disableUser();
+        } catch (SecurityException exception) {
+            System.out.println("Access denied.");
+            System.out.println("Reason: " + exception.getMessage());
+        }
+    }
+
     private void showMenu() {
         System.out.println("=================================");
         System.out.println("        AlSafe Backoffice        ");
@@ -95,6 +124,8 @@ public class MainMenuUI {
         System.out.println("2 - Register User");
         System.out.println("3 - Logout");
         System.out.println("4 - List Users");
+        System.out.println("5 - Enable User");
+        System.out.println("6 - Disable User");
         System.out.println("0 - Exit");
         System.out.print("Choose an option: ");
     }

@@ -2,17 +2,12 @@ package pt.ipp.isep.dei;
 
 import pt.ipp.isep.dei.application.*;
 import pt.ipp.isep.dei.bootstrap.Bootstrap;
-import pt.ipp.isep.dei.controller.AuthenticationController;
-import pt.ipp.isep.dei.controller.ListUsersController;
-import pt.ipp.isep.dei.controller.RegisterUserController;
+import pt.ipp.isep.dei.controller.*;
 import pt.ipp.isep.dei.repository.InMemoryRoleRepository;
 import pt.ipp.isep.dei.repository.InMemoryUserRepository;
 import pt.ipp.isep.dei.repository.RoleRepository;
 import pt.ipp.isep.dei.repository.UserRepository;
-import pt.ipp.isep.dei.ui.console.AuthenticationUI;
-import pt.ipp.isep.dei.ui.console.ListUsersUI;
-import pt.ipp.isep.dei.ui.console.MainMenuUI;
-import pt.ipp.isep.dei.ui.console.RegisterUserUI;
+import pt.ipp.isep.dei.ui.console.*;
 
 import java.util.Scanner;
 
@@ -31,21 +26,31 @@ public class Main {
         AuthorizationService authorizationService = new AuthorizationService(session);
         RegisterUserService registerUserService = new RegisterUserService(userRepository, roleRepository);
         ListUsersService listUsersService = new ListUsersService(userRepository);
+        EnableUserService enableUserService = new EnableUserService(userRepository);
+        DisableUserService disableUserService = new DisableUserService(userRepository);
 
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);
         ListUsersController listUsersController = new ListUsersController(listUsersService);
+        EnableUserController enableUserController = new EnableUserController(enableUserService);
+        DisableUserController disableUserController = new DisableUserController(disableUserService);
 
         Scanner scanner = new Scanner(System.in);
 
         AuthenticationUI authenticationUI = new AuthenticationUI(authenticationController, scanner);
         RegisterUserUI registerUserUI = new RegisterUserUI(registerUserController, scanner);
         ListUsersUI listUsersUI = new ListUsersUI(listUsersController);
+        EnableDisableUserUI enableDisableUserUI = new EnableDisableUserUI(
+                enableUserController,
+                disableUserController,
+                scanner
+        );
 
         MainMenuUI menu = new MainMenuUI(
                 authenticationUI,
                 registerUserUI,
                 listUsersUI,
+                enableDisableUserUI,
                 authorizationService,
                 scanner
         );
