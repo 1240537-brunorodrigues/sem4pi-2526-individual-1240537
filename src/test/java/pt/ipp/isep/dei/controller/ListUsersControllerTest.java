@@ -1,7 +1,7 @@
 package pt.ipp.isep.dei.controller;
 
 import org.junit.jupiter.api.Test;
-import pt.ipp.isep.dei.application.ListUsersService;
+import pt.ipp.isep.dei.application.*;
 import pt.ipp.isep.dei.bootstrap.Bootstrap;
 import pt.ipp.isep.dei.domain.user.Email;
 import pt.ipp.isep.dei.repository.InMemoryRoleRepository;
@@ -21,7 +21,13 @@ class ListUsersControllerTest {
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
 
-        ListUsersService service = new ListUsersService(userRepository);
+        AuthenticatedUserSession session = new AuthenticatedUserSession();
+        AuthenticationService authenticationService = new AuthenticationService(userRepository, session);
+        AuthorizationService authorizationService = new AuthorizationService(session);
+
+        authenticationService.authenticate("admin@alsafe.pt", "Password123");
+
+        ListUsersService service = new ListUsersService(userRepository, authorizationService);
         ListUsersController controller = new ListUsersController(service);
 
         var users = controller.listUsers();

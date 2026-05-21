@@ -12,7 +12,6 @@ participant "ListUsersController" as CTRL
 participant "ListUsersService" as Service
 participant "AuthorizationService" as AuthzService
 participant "UserRepository" as UserRepo
-participant "UserDTO" as UserDTO
 
 activate Admin
 
@@ -25,44 +24,28 @@ activate CTRL
 CTRL -> Service : listUsers()
 
 activate Service
-Service -> AuthzService : isAuthorized(currentUser, LIST_USERS)
+Service -> AuthzService : requirePermission("LIST_USERS")
 
 activate AuthzService
-AuthzService --> Service : true/false
+AuthzService --> Service : authorization granted
 deactivate AuthzService
 
-alt administrator is authorized
+Service -> UserRepo : findAll()
 
-    Service -> UserRepo : findAllBackofficeUsers()
+activate UserRepo
+UserRepo --> Service : List<User>
+deactivate UserRepo
 
-    activate UserRepo
-    UserRepo --> Service : List<User>
-    deactivate UserRepo
+Service -> Service : sort users by email
 
-    alt users exist
-
-        loop for each user
-            Service -> UserDTO ** : UserDTO(user data)
-        end
-
-        Service --> CTRL : List<UserDTO>
-        CTRL --> UI : List<UserDTO>
-        UI --> Admin : Display users with status
-
-    else no users exist
-
-        Service --> CTRL : Empty list
-        CTRL --> UI : Empty list
-        UI --> Admin : Display empty list message
-
-    end
-
-else administrator is not authorized
-
-    Service --> CTRL : Access denied
-    CTRL --> UI : Error
-    UI --> Admin : Display access denied message
-
+alt users exist
+    Service --> CTRL : List<User>
+    CTRL --> UI : List<User>
+    UI --> Admin : Display users with status and roles
+else no users exist
+    Service --> CTRL : Empty list
+    CTRL --> UI : Empty list
+    UI --> Admin : Display empty list message
 end
 
 deactivate Service

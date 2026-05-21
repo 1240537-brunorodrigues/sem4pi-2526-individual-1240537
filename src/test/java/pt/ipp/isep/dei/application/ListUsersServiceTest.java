@@ -3,8 +3,8 @@ package pt.ipp.isep.dei.application;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import pt.ipp.isep.dei.bootstrap.Bootstrap;
-import pt.ipp.isep.dei.domain.user.*;
 import pt.ipp.isep.dei.domain.auth.Role;
+import pt.ipp.isep.dei.domain.user.*;
 import pt.ipp.isep.dei.repository.InMemoryRoleRepository;
 import pt.ipp.isep.dei.repository.InMemoryUserRepository;
 import pt.ipp.isep.dei.repository.RoleRepository;
@@ -19,6 +19,9 @@ class ListUsersServiceTest {
 
     private UserRepository userRepository;
     private RoleRepository roleRepository;
+    private AuthenticatedUserSession session;
+    private AuthenticationService authenticationService;
+    private AuthorizationService authorizationService;
     private ListUsersService service;
 
     @BeforeEach
@@ -29,7 +32,13 @@ class ListUsersServiceTest {
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
 
-        service = new ListUsersService(userRepository);
+        session = new AuthenticatedUserSession();
+        authenticationService = new AuthenticationService(userRepository, session);
+        authorizationService = new AuthorizationService(session);
+
+        authenticationService.authenticate("admin@alsafe.pt", "Password123");
+
+        service = new ListUsersService(userRepository, authorizationService);
     }
 
     private User createUser(String email) {
@@ -51,7 +60,7 @@ class ListUsersServiceTest {
         var users = service.listUsers();
 
         assertEquals(1, users.size());
-        assertEquals(new Email("admin@alsafe.pt"), users.getFirst().email());
+        assertEquals(new Email("admin@alsafe.pt"), users.get(0).email());
     }
 
     @Test
@@ -77,7 +86,41 @@ class ListUsersServiceTest {
     }
 
     @Test
+    void shouldRejectListUsersWhenNotAuthenticated() {
+        session.logout();
+
+        assertThrows(SecurityException.class, () -> service.listUsers());
+    }
+
+    @Test
+    void shouldRejectListUsersWhenUserDoesNotHavePermission() {
+        User weatherUser = new User(
+                new Email("weather@alsafe.pt"),
+                "Weather User",
+                new PhoneNumber("+351912345678"),
+                new Credential("Password123"),
+                Set.of(roleRepository.findByName("WEATHER_PERSON").orElseThrow()),
+                new SecurityClearance(LocalDate.of(2028, 12, 31)),
+                new SkillsAssessment(LocalDate.now(), 12)
+        );
+
+        userRepository.save(weatherUser);
+
+        authenticationService.logout();
+        authenticationService.authenticate("weather@alsafe.pt", "Password123");
+
+        assertThrows(SecurityException.class, () -> service.listUsers());
+    }
+
+    @Test
     void shouldRejectNullRepository() {
-        assertThrows(IllegalArgumentException.class, () -> new ListUsersService(null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ListUsersService(null, authorizationService));
+    }
+
+    @Test
+    void shouldRejectNullAuthorizationService() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ListUsersService(userRepository, null));
     }
 }

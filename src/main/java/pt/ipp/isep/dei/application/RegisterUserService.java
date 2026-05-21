@@ -12,8 +12,13 @@ public class RegisterUserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final AuthorizationService authorizationService;
 
-    public RegisterUserService(UserRepository userRepository, RoleRepository roleRepository) {
+    public RegisterUserService(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            AuthorizationService authorizationService
+    ) {
         if (userRepository == null) {
             throw new IllegalArgumentException("User repository cannot be null.");
         }
@@ -22,11 +27,18 @@ public class RegisterUserService {
             throw new IllegalArgumentException("Role repository cannot be null.");
         }
 
+        if (authorizationService == null) {
+            throw new IllegalArgumentException("Authorization service cannot be null.");
+        }
+
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.authorizationService = authorizationService;
     }
 
     public User registerUser(RegisterUserRequest request) {
+        authorizationService.requirePermission("REGISTER_USER");
+
         if (request == null) {
             throw new IllegalArgumentException("Register user request cannot be null.");
         }

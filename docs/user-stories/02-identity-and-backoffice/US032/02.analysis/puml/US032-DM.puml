@@ -9,10 +9,6 @@ skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 
-class Administrator {
-    email
-}
-
 class User {
     email
     name
@@ -34,14 +30,13 @@ class SkillsAssessment {
     validityPeriod
 }
 
-class Authentication {
-    credentials
+class Authorization {
+    requiredPermission
 }
 
-Administrator "1" -- "*" User : manages >
 User "1" -- "1" UserStatus : has >
 User "1" -- "1" SecurityClearance : has >
 User "1" -- "1" SkillsAssessment : has >
-Authentication "*" -- "1" User : checks status of >
+Authorization "1" -- "*" User : protects management of >
 
 @enduml

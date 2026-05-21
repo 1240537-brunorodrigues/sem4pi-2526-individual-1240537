@@ -6,42 +6,39 @@ skinparam sequenceMessageAlign center
 
 autonumber
 
-actor "User" as User
+actor "User" as UserActor
 participant "AuthenticationUI" as UI
 participant "AuthenticationController" as CTRL
 participant "AuthenticationService" as AuthService
 participant "UserRepository" as UserRepo
 participant "User" as UserEntity
-participant "Credential" as Credential
-participant "AuthorizationService" as AuthorizationService
-participant "Role" as Role
+participant "AuthenticatedUserSession" as Session
+participant "AuthorizationService" as AuthzService
 
-activate User
+activate UserActor
 
-User -> UI : Requests authentication
-
+UserActor -> UI : Requests authentication
 activate UI
-UI --> User : Requests email and password
-deactivate UI
+UI --> UserActor : Requests email and password
+UserActor -> UI : Provides email and password
 
-User -> UI : Provides email and password
-
-activate UI
 UI -> CTRL : authenticate(email, password)
-
 activate CTRL
 CTRL -> AuthService : authenticate(email, password)
-
 activate AuthService
-AuthService -> UserRepo : findByEmail(email)
 
+AuthService -> UserRepo : findByEmail(email)
 activate UserRepo
 UserRepo --> AuthService : Optional<User>
 deactivate UserRepo
 
 alt user exists
+    AuthService -> UserEntity : isDisabled()
+    activate UserEntity
+    UserEntity --> AuthService : true/false
+    deactivate UserEntity
 
-    AuthService -> UserEntity : isEnabled()
+    AuthService -> UserEntity : matchesPassword(password)
     activate UserEntity
     UserEntity --> AuthService : true/false
     deactivate UserEntity
@@ -56,66 +53,62 @@ alt user exists
     UserEntity --> AuthService : true/false
     deactivate UserEntity
 
-    AuthService -> Credential : matches(password)
-    activate Credential
-    Credential --> AuthService : true/false
-    deactivate Credential
+    alt credentials and access conditions are valid
+        AuthService -> Session : login(user)
+        activate Session
+        Session --> AuthService : session updated
+        deactivate Session
 
-    alt user access conditions and credentials are valid
-        AuthService --> CTRL : AuthenticatedUserSession
-        CTRL --> UI : Authentication successful
-        UI --> User : Display success message
-
-        User -> UI : Requests protected functionality
-
-        activate UI
-        UI -> CTRL : authorize(session, requiredPermission)
-
-        activate CTRL
-        CTRL -> AuthorizationService : isAuthorized(user, requiredPermission)
-
-        activate AuthorizationService
-        AuthorizationService -> UserEntity : hasPermission(requiredPermission)
-
-        activate UserEntity
-        UserEntity -> Role : hasPermission(requiredPermission)
-
-        activate Role
-        Role --> UserEntity : true/false
-        deactivate Role
-
-        UserEntity --> AuthorizationService : true/false
-        deactivate UserEntity
-
-        AuthorizationService --> CTRL : true/false
-        deactivate AuthorizationService
-
-        alt user is authorized
-            CTRL --> UI : Access granted
-            UI --> User : Display protected functionality
-        else user is not authorized
-            CTRL --> UI : Access denied
-            UI --> User : Display access denied message
-        end
-
-        deactivate CTRL
-        deactivate UI
-
-    else invalid credentials or invalid access conditions
-        AuthService --> CTRL : Authentication failed
-        CTRL --> UI : Error
-        UI --> User : Display authentication error message
+        AuthService --> CTRL : User
+        CTRL --> UI : User
+        UI --> UserActor : Display authentication success message
+    else invalid credentials or access conditions
+        AuthService --> CTRL : throws IllegalArgumentException
+        CTRL --> UI : error
+        UI --> UserActor : Display authentication error message
     end
-
 else user does not exist
-    AuthService --> CTRL : Authentication failed
-    CTRL --> UI : Error
-    UI --> User : Display authentication error message
+    AuthService --> CTRL : throws IllegalArgumentException
+    CTRL --> UI : error
+    UI --> UserActor : Display authentication error message
 end
 
 deactivate AuthService
 deactivate CTRL
+
+UserActor -> UI : Requests protected functionality
+UI -> AuthzService : requirePermission(permissionName)
+activate AuthzService
+AuthzService -> Session : isLoggedIn()
+activate Session
+Session --> AuthzService : true/false
+deactivate Session
+
+alt user is logged in
+    AuthzService -> Session : currentUser()
+    activate Session
+    Session --> AuthzService : User
+    deactivate Session
+
+    AuthzService -> UserEntity : hasPermission(permission)
+    activate UserEntity
+    UserEntity --> AuthzService : true/false
+    deactivate UserEntity
+
+    alt user has permission
+        AuthzService --> UI : authorization granted
+        UI --> UserActor : Display protected functionality
+    else user does not have permission
+        AuthzService --> UI : throws SecurityException
+        UI --> UserActor : Display access denied message
+    end
+else user is not logged in
+    AuthzService --> UI : throws SecurityException
+    UI --> UserActor : Display access denied message
+end
+
+deactivate AuthzService
 deactivate UI
-deactivate User
+deactivate UserActor
 
 @enduml

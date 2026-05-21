@@ -92,4 +92,20 @@ The following unit tests should be implemented:
 
 ### 4.5. Implementation Status
 
-Not implemented yet.
+Implemented.
+
+Current implementation includes:
+
+* authentication by email and password;
+* rejection of unknown users;
+* rejection of users with invalid credentials;
+* rejection of disabled users;
+* validation of security clearance during authentication;
+* validation of skills assessment during authentication;
+* authenticated user session management;
+* logout support;
+* permission-based authorization through `AuthorizationService`;
+* support for multiple roles per user through `Set<Role>`;
+* in-memory user repository support.
+
+Current implementation intentionally does not include DTOs. Controllers and services return domain objects directly because the current application is console-based and still uses in-memory persistence.

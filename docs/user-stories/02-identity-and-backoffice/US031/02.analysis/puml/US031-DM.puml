@@ -9,10 +9,6 @@ skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 
-class Administrator {
-    email
-}
-
 class User {
     email
     name
@@ -22,6 +18,10 @@ class User {
 
 class Role {
     name
+}
+
+class Credential {
+    passwordHash
 }
 
 class SecurityClearance {
@@ -37,12 +37,13 @@ class EmailDomain {
     domain
 }
 
-class BootstrapProcess {
-    source
+class Bootstrap {
+    defaultData
 }
 
-Administrator "1" -- "*" User : registers >
-BootstrapProcess "1" -- "*" User : initializes >
+Bootstrap "1" -- "*" User : initializes >
+Bootstrap "1" -- "*" Role : initializes >
+User "1" -- "1" Credential : has >
 User "1" -- "1..*" Role : has >
 User "1" -- "1" SecurityClearance : has >
 User "1" -- "1" SkillsAssessment : has >

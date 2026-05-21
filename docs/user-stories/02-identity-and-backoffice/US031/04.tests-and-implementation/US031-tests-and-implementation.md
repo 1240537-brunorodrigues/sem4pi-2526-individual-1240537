@@ -103,3 +103,24 @@ The following unit tests should be implemented:
 * **Given** valid bootstrap user data
 * **When** the system bootstrap process runs
 * **Then** the default users should be registered
+
+### 4.5. Implementation Status
+
+Implemented.
+
+Current implementation includes:
+
+* user registration through `RegisterUserService`;
+* registration request representation through `RegisterUserRequest`;
+* controller support through `RegisterUserController`;
+* console interaction through `RegisterUserUI`;
+* duplicate email validation;
+* role resolution through `RoleRepository`;
+* user persistence through `UserRepository`;
+* credential creation from the provided password;
+* security clearance assignment;
+* skills assessment assignment with a configurable validity period;
+* authorization check before registration;
+* bootstrap support for default users, roles and permissions.
+
+Current implementation intentionally does not use `UserDTO`. The registered `User` is returned directly by the application service and controller.

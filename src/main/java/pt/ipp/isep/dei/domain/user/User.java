@@ -8,6 +8,8 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
+import java.time.LocalDate;
+
 public class User {
 
     private final Email email;
@@ -125,6 +127,14 @@ public class User {
         }
 
         return roles.stream().anyMatch(role -> role.hasPermission(permission));
+    }
+
+    public boolean hasValidSecurityClearance(LocalDate date) {
+        return securityClearance.isValidOn(date);
+    }
+
+    public boolean hasValidSkillsAssessment(LocalDate date) {
+        return skillsAssessment.isValidOn(date);
     }
 
     public boolean matchesPassword(String rawPassword) {

@@ -9,10 +9,6 @@ skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 
-class Administrator {
-    email
-}
-
 class User {
     email
     name
@@ -33,9 +29,13 @@ class UserList {
     users
 }
 
-Administrator "1" -- "*" UserList : requests >
+class Authorization {
+    requiredPermission
+}
+
 UserList "1" o-- "*" User : contains >
 User "1" -- "1" UserStatus : has >
 User "1" -- "1..*" Role : has >
+Authorization "1" -- "*" UserList : protects access to >
 
 @enduml

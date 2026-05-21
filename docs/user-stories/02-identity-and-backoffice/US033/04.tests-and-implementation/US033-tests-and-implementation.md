@@ -19,12 +19,11 @@ The implementation should include:
 
 ### 4.2. Main Classes to Implement
 
-Possible main classes:
+Main classes:
 
 * `ListUsersUI`
 * `ListUsersController`
 * `ListUsersService`
-* `UserDTO`
 * `User`
 * `Email`
 * `PhoneNumber`
@@ -35,8 +34,6 @@ Possible main classes:
 * `AuthorizationService`
 * `UserRepository`
 * `InMemoryUserRepository`
-
----
 
 ### 4.3. Unit Tests
 
@@ -92,4 +89,17 @@ The following unit tests should be implemented:
 
 ### 4.5. Implementation Status
 
-Not implemented yet.
+Implemented.
+
+Current implementation includes:
+
+* listing users through `ListUsersService`;
+* controller support through `ListUsersController`;
+* console display through `ListUsersUI`;
+* retrieval of all users from `UserRepository`;
+* sorting users by email;
+* display of email, name, phone number, status and roles;
+* authorization check before listing users;
+* read-only behavior, since listing users does not modify system state.
+
+Current implementation returns `List<User>` directly and does not use DTOs.

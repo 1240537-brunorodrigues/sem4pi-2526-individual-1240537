@@ -68,8 +68,10 @@ No additional client clarifications are currently available.
   * Email
   * Name
   * Phone number
+  * Password
   * Security clearance expiration date
   * Last skills assessment date
+  * Skills assessment validity period in months
 
 * Selected data:
   * Role or roles
@@ -97,5 +99,5 @@ No additional client clarifications are currently available.
 
 * The bootstrap process must follow the same validation rules as manual registration.
 * The system should not allow duplicated users.
-* Password creation policy is not fully detailed in the specification. Until clarified, the system may generate an initial password or require one during registration.
+* Since the specification does not define a password creation policy, the current implementation requires a password during registration.
 * The design should remain flexible enough to support multiple roles per user in the future.

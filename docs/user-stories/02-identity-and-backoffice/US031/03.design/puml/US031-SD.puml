@@ -13,92 +13,67 @@ participant "RegisterUserService" as Service
 participant "AuthorizationService" as AuthzService
 participant "UserRepository" as UserRepo
 participant "RoleRepository" as RoleRepo
-participant "Email" as Email
-participant "User:\n newUser" as NewUser
+participant "User" as NewUser
 
 activate Admin
 
 Admin -> UI : Requests to register a new backoffice user
-
 activate UI
 UI --> Admin : Requests user data
-deactivate UI
-
 Admin -> UI : Provides user data
 
-activate UI
 UI -> CTRL : registerUser(request)
-
 activate CTRL
 CTRL -> Service : registerUser(request)
-
 activate Service
 
-Service -> AuthzService : isAuthorized(currentUser, REGISTER_USER)
-
+Service -> AuthzService : requirePermission("REGISTER_USER")
 activate AuthzService
-AuthzService --> Service : true/false
-deactivate AuthzService
 
 alt administrator is authorized
-
-    Service -> Email : Email(request.email)
-    activate Email
-    Email --> Service : email
-    deactivate Email
+    AuthzService --> Service : authorization granted
+    deactivate AuthzService
 
     Service -> UserRepo : existsByEmail(email)
-
     activate UserRepo
     UserRepo --> Service : true/false
     deactivate UserRepo
 
     alt email does not exist
-
         loop for each selected role
             Service -> RoleRepo : findByName(roleName)
-
             activate RoleRepo
             RoleRepo --> Service : Optional<Role>
             deactivate RoleRepo
         end
 
         alt all roles exist and data is valid
-
-            Service -> NewUser ** : User(email, name, phoneNumber, roles,\nsecurityClearance, skillsAssessment, credential)
+            Service -> NewUser ** : User(email, name, phoneNumber, credential, roles, securityClearance, skillsAssessment)
 
             Service -> UserRepo : save(newUser)
-
             activate UserRepo
-            UserRepo --> Service : saved
+            UserRepo --> Service : User
             deactivate UserRepo
 
-            Service --> CTRL : UserDTO
-            CTRL --> UI : Registration successful
+            Service --> CTRL : User
+            CTRL --> UI : User
             UI --> Admin : Display success message
-
         else invalid role or invalid data
-
-            Service --> CTRL : Registration failed
-            CTRL --> UI : Error
+            Service --> CTRL : throws IllegalArgumentException
+            CTRL --> UI : error
             UI --> Admin : Display error message
-
         end
-
     else email already exists
-
-        Service --> CTRL : Registration failed
-        CTRL --> UI : Error
+        Service --> CTRL : throws IllegalArgumentException
+        CTRL --> UI : error
         UI --> Admin : Display duplicated email error
-
     end
-
 else administrator is not authorized
-
-    Service --> CTRL : Access denied
-    CTRL --> UI : Error
+    AuthzService --> Service : throws SecurityException
+    deactivate AuthzService
+    Service --> CTRL : access denied
+    CTRL --> UI : error
     UI --> Admin : Display access denied message
-
 end
 
 deactivate Service

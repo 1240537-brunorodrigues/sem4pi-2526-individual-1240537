@@ -2,8 +2,7 @@ package pt.ipp.isep.dei.controller;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import pt.ipp.isep.dei.application.RegisterUserRequest;
-import pt.ipp.isep.dei.application.RegisterUserService;
+import pt.ipp.isep.dei.application.*;
 import pt.ipp.isep.dei.bootstrap.Bootstrap;
 import pt.ipp.isep.dei.domain.user.Email;
 import pt.ipp.isep.dei.domain.user.User;
@@ -29,7 +28,18 @@ class RegisterUserControllerTest {
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
 
-        RegisterUserService service = new RegisterUserService(userRepository, roleRepository);
+        AuthenticatedUserSession session = new AuthenticatedUserSession();
+        AuthenticationService authenticationService = new AuthenticationService(userRepository, session);
+        AuthorizationService authorizationService = new AuthorizationService(session);
+
+        authenticationService.authenticate("admin@alsafe.pt", "Password123");
+
+        RegisterUserService service = new RegisterUserService(
+                userRepository,
+                roleRepository,
+                authorizationService
+        );
+
         controller = new RegisterUserController(service);
     }
 

@@ -4,6 +4,8 @@ import pt.ipp.isep.dei.domain.user.Email;
 import pt.ipp.isep.dei.domain.user.User;
 import pt.ipp.isep.dei.repository.UserRepository;
 
+import java.time.LocalDate;
+
 public class AuthenticationService {
 
     private final UserRepository userRepository;
@@ -30,6 +32,16 @@ public class AuthenticationService {
 
         if (user.isDisabled()) {
             throw new IllegalArgumentException("User is disabled.");
+        }
+
+        LocalDate today = LocalDate.now();
+
+        if (!user.hasValidSecurityClearance(today)) {
+            throw new IllegalArgumentException("User security clearance is expired.");
+        }
+
+        if (!user.hasValidSkillsAssessment(today)) {
+            throw new IllegalArgumentException("User skills assessment is expired.");
         }
 
         if (!user.matchesPassword(password)) {

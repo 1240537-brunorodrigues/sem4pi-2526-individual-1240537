@@ -19,12 +19,13 @@ The implementation should include:
 
 ### 4.2. Main Classes to Implement
 
-Possible main classes:
+Main classes:
 
-* `ManageUserStatusUI`
-* `ManageUserStatusController`
-* `ManageUserStatusService`
-* `UserDTO`
+* `EnableDisableUserUI`
+* `EnableUserController`
+* `DisableUserController`
+* `EnableUserService`
+* `DisableUserService`
 * `User`
 * `Email`
 * `PhoneNumber`
@@ -35,8 +36,6 @@ Possible main classes:
 * `AuthorizationService`
 * `UserRepository`
 * `InMemoryUserRepository`
-
----
 
 ### 4.3. Unit Tests
 
@@ -92,4 +91,18 @@ The following unit tests should be implemented:
 
 ### 4.5. Implementation Status
 
-Not implemented yet.
+Implemented.
+
+Current implementation includes:
+
+* enabling users through `EnableUserService`;
+* disabling users through `DisableUserService`;
+* controller support through `EnableUserController` and `DisableUserController`;
+* console interaction through `EnableDisableUserUI`;
+* lookup of users by email;
+* rejection of operations over non-existing users;
+* persistence of the updated user status;
+* authorization check before enabling or disabling users;
+* consistency with authentication rules from US030, since disabled users cannot authenticate.
+
+Current implementation returns the updated `User` directly and does not use DTOs.

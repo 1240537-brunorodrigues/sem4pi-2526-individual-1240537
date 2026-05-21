@@ -8,100 +8,140 @@ skinparam classAttributeIconSize 0
 
 package "ui.console" #DDDDDD {
     class AuthenticationUI {
-        - email: String
-        - password: String
-        + requestCredentials()
-        + displayMessage(message: String)
-        + displayError(message: String)
+        - controller: AuthenticationController
+        - scanner: Scanner
+        + run(): void
+        + logout(): void
     }
 }
 
 package "controller" #DDDDDD {
     class AuthenticationController {
-        + authenticate(email: String, password: String): AuthenticatedUserSession
-        + authorize(session: AuthenticatedUserSession, permission: Permission): boolean
+        - authenticationService: AuthenticationService
+        + authenticate(email: String, password: String): User
+        + logout(): void
+        + isLoggedIn(): boolean
+        + currentUser(): User
     }
 }
 
 package "application" #DDDDDD {
     class AuthenticationService {
-        + authenticate(email: String, password: String): AuthenticatedUserSession
+        - userRepository: UserRepository
+        - session: AuthenticatedUserSession
+        + authenticate(emailValue: String, password: String): User
+        + logout(): void
+        + isLoggedIn(): boolean
+        + currentUser(): User
     }
 
     class AuthorizationService {
-        + isAuthorized(user: User, permission: Permission): boolean
+        - session: AuthenticatedUserSession
+        + isAuthorized(permissionName: String): boolean
+        + requirePermission(permissionName: String): void
     }
 
     class AuthenticatedUserSession {
-        - user: User
-        + getUser(): User
+        - currentUser: User
+        + isLoggedIn(): boolean
+        + currentUser(): User
+        + login(user: User): void
+        + logout(): void
     }
 }
 
-package "domain" #DDDDDD {
+package "domain.user" #DDDDDD {
     class User {
         - email: Email
         - name: String
-        - phoneNumber: String
-        - enabled: boolean
-        - roles: List<Role>
+        - phoneNumber: PhoneNumber
         - credential: Credential
+        - roles: Set<Role>
         - securityClearance: SecurityClearance
         - skillsAssessment: SkillsAssessment
+        - enabled: boolean
+        + email(): Email
+        + name(): String
+        + phoneNumber(): PhoneNumber
+        + roles(): Set<Role>
+        + status(): String
         + isEnabled(): boolean
+        + isDisabled(): boolean
+        + enable(): void
+        + disable(): void
+        + matchesPassword(password: String): boolean
+        + hasPermission(permission: Permission): boolean
         + hasValidSecurityClearance(currentDate: LocalDate): boolean
         + hasValidSkillsAssessment(currentDate: LocalDate): boolean
-        + hasPermission(permission: Permission): boolean
     }
 
     class Email {
         - value: String
         + Email(value: String)
+        + value(): String
+    }
+
+    class PhoneNumber {
+        - value: String
+        + PhoneNumber(value: String)
+        + value(): String
     }
 
     class Credential {
         - passwordHash: String
+        + Credential(rawPassword: String)
         + matches(rawPassword: String): boolean
     }
 
+    class SecurityClearance {
+        - expirationDate: LocalDate
+        + SecurityClearance(expirationDate: LocalDate)
+        + isValid(currentDate: LocalDate): boolean
+    }
+
+    class SkillsAssessment {
+        - assessmentDate: LocalDate
+        - validityPeriodInMonths: int
+        + SkillsAssessment(assessmentDate: LocalDate, validityPeriodInMonths: int)
+        + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "domain.auth" #DDDDDD {
     class Role {
         - name: String
-        - permissions: List<Permission>
+        - permissions: Set<Permission>
+        + name(): String
         + hasPermission(permission: Permission): boolean
     }
 
     class Permission {
         - name: String
-    }
-
-    class SecurityClearance {
-        - expirationDate: LocalDate
-        + isValid(currentDate: LocalDate): boolean
-    }
-
-    class SkillsAssessment {
-        - lastAssessmentDate: LocalDate
-        + isValid(currentDate: LocalDate): boolean
+        + Permission(name: String)
+        + name(): String
     }
 }
 
 package "repository" #DDDDDD {
     interface UserRepository {
         + findByEmail(email: Email): Optional<User>
-        + save(user: User): void
+        + existsByEmail(email: Email): boolean
+        + findAll(): List<User>
+        + save(user: User): User
     }
 }
 
 AuthenticationUI --> AuthenticationController : uses >
 AuthenticationController --> AuthenticationService : uses >
-AuthenticationController --> AuthorizationService : uses >
 AuthenticationService --> UserRepository : searches >
-AuthenticationService --> AuthenticatedUserSession : creates >
-AuthenticationService --> User : validates >
+AuthenticationService --> AuthenticatedUserSession : updates >
+AuthorizationService --> AuthenticatedUserSession : reads >
 AuthorizationService --> User : checks permissions >
 
-UserRepository --> User : retrieves >
+UserRepository --> User : retrieves/saves >
+
 User *-- Email
+User *-- PhoneNumber
 User *-- Credential
 User *-- SecurityClearance
 User *-- SkillsAssessment

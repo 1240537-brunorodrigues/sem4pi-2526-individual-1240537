@@ -24,10 +24,26 @@ public class Main {
 
         AuthenticationService authenticationService = new AuthenticationService(userRepository, session);
         AuthorizationService authorizationService = new AuthorizationService(session);
-        RegisterUserService registerUserService = new RegisterUserService(userRepository, roleRepository);
-        ListUsersService listUsersService = new ListUsersService(userRepository);
-        EnableUserService enableUserService = new EnableUserService(userRepository);
-        DisableUserService disableUserService = new DisableUserService(userRepository);
+        RegisterUserService registerUserService = new RegisterUserService(
+                userRepository,
+                roleRepository,
+                authorizationService
+        );
+
+        ListUsersService listUsersService = new ListUsersService(
+                userRepository,
+                authorizationService
+        );
+
+        EnableUserService enableUserService = new EnableUserService(
+                userRepository,
+                authorizationService
+        );
+
+        DisableUserService disableUserService = new DisableUserService(
+                userRepository,
+                authorizationService
+        );
 
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);

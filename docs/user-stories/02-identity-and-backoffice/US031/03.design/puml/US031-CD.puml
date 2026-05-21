@@ -1,4 +1,3 @@
-@startuml
 title US031-CD
 
 skinparam monochrome true
@@ -8,69 +7,76 @@ skinparam classAttributeIconSize 0
 
 package "ui.console" #DDDDDD {
     class RegisterUserUI {
-        - email: String
-        - name: String
-        - phoneNumber: String
-        - selectedRoles: List<String>
-        - securityClearanceExpirationDate: LocalDate
-        - lastSkillsAssessmentDate: LocalDate
-        + requestData()
-        + displayMessage(message: String)
-        + displayError(message: String)
+        - controller: RegisterUserController
+        - scanner: Scanner
+        + run(): void
     }
 }
 
 package "controller" #DDDDDD {
     class RegisterUserController {
-        + registerUser(request: RegisterUserRequest): UserDTO
+        - registerUserService: RegisterUserService
+        + registerUser(request: RegisterUserRequest): User
     }
 }
 
 package "application" #DDDDDD {
     class RegisterUserService {
-        + registerUser(request: RegisterUserRequest): UserDTO
+        - userRepository: UserRepository
+        - roleRepository: RoleRepository
+        - authorizationService: AuthorizationService
+        + registerUser(request: RegisterUserRequest): User
     }
 
     class AuthorizationService {
-        + isAuthorized(user: User, permission: Permission): boolean
+        + requirePermission(permissionName: String): void
+        + isAuthorized(permissionName: String): boolean
     }
 
     class RegisterUserRequest {
         - email: String
         - name: String
         - phoneNumber: String
-        - roleNames: List<String>
+        - password: String
+        - roleNames: Set<String>
         - securityClearanceExpirationDate: LocalDate
-        - lastSkillsAssessmentDate: LocalDate
-    }
-
-    class UserDTO {
-        - email: String
-        - name: String
-        - phoneNumber: String
-        - roles: List<String>
-        - enabled: boolean
-    }
-
-    class BootstrapUserLoader {
-        + loadDefaultUsers(): void
+        - skillsAssessmentDate: LocalDate
+        - skillsAssessmentValidityPeriodInMonths: int
+        + email(): String
+        + name(): String
+        + phoneNumber(): String
+        + password(): String
+        + roleNames(): Set<String>
+        + securityClearanceExpirationDate(): LocalDate
+        + skillsAssessmentDate(): LocalDate
+        + skillsAssessmentValidityPeriodInMonths(): int
     }
 }
 
-package "domain" #DDDDDD {
+package "bootstrap" #DDDDDD {
+    class Bootstrap {
+        - userRepository: UserRepository
+        - roleRepository: RoleRepository
+        + run(): void
+    }
+}
+
+package "domain.user" #DDDDDD {
     class User {
         - email: Email
         - name: String
         - phoneNumber: PhoneNumber
-        - enabled: boolean
-        - roles: List<Role>
         - credential: Credential
+        - roles: Set<Role>
         - securityClearance: SecurityClearance
         - skillsAssessment: SkillsAssessment
+        - enabled: boolean
         + User(...)
         + enable(): void
         + disable(): void
-        + hasRole(role: Role): boolean
+        + isEnabled(): boolean
+        + isDisabled(): boolean
+        + hasPermission(permission: Permission): boolean
     }
 
     class Email {
@@ -85,38 +91,51 @@ package "domain" #DDDDDD {
 
     class Credential {
         - passwordHash: String
-        + Credential(passwordHash: String)
-    }
-
-    class Role {
-        - name: String
-        - permissions: List<Permission>
-    }
-
-    class Permission {
-        - name: String
+        + Credential(rawPassword: String)
+        + matches(rawPassword: String): boolean
     }
 
     class SecurityClearance {
         - expirationDate: LocalDate
+        + SecurityClearance(expirationDate: LocalDate)
         + isValid(currentDate: LocalDate): boolean
     }
 
     class SkillsAssessment {
-        - lastAssessmentDate: LocalDate
+        - assessmentDate: LocalDate
+        - validityPeriodInMonths: int
+        + SkillsAssessment(assessmentDate: LocalDate, validityPeriodInMonths: int)
         + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "domain.auth" #DDDDDD {
+    class Role {
+        - name: String
+        - permissions: Set<Permission>
+        + name(): String
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Permission {
+        - name: String
+        + Permission(name: String)
+        + name(): String
     }
 }
 
 package "repository" #DDDDDD {
     interface UserRepository {
         + existsByEmail(email: Email): boolean
-        + save(user: User): void
+        + save(user: User): User
         + findByEmail(email: Email): Optional<User>
+        + findAll(): List<User>
     }
 
     interface RoleRepository {
         + findByName(name: String): Optional<Role>
+        + save(role: Role): Role
+        + findAll(): List<Role>
     }
 }
 
@@ -125,9 +144,10 @@ RegisterUserController --> RegisterUserService : uses >
 RegisterUserService --> AuthorizationService : checks permission >
 RegisterUserService --> UserRepository : checks/saves >
 RegisterUserService --> RoleRepository : retrieves roles >
+RegisterUserService --> RegisterUserRequest : reads >
 RegisterUserService --> User : creates >
-RegisterUserService --> UserDTO : returns >
-BootstrapUserLoader --> RegisterUserService : uses >
+Bootstrap --> UserRepository : seeds users >
+Bootstrap --> RoleRepository : seeds roles >
 
 User *-- Email
 User *-- PhoneNumber

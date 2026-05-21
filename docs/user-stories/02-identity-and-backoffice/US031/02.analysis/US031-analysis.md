@@ -14,6 +14,7 @@ The relevant domain concepts for this user story are:
 * **Security Clearance:** condition required for access to the system.
 * **Skills Assessment:** periodic assessment required by regulation.
 * **Bootstrap Process:** initialization mechanism that registers default users automatically.
+* **Credential:** authentication secret associated with the user.
 
 ---
 
@@ -30,6 +31,8 @@ The relevant domain concepts for this user story are:
 * A user cannot be registered if another user already has the same email.
 * A user registered through bootstrap must obey the same rules as a user registered manually.
 * The system should be prepared to support multiple roles per user in the future.
+* A user must provide a password during registration.
+* The skills assessment validity period must be defined during registration.
 
 ---
 

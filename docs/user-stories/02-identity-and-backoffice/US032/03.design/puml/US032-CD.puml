@@ -7,72 +7,72 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 
 package "ui.console" #DDDDDD {
-    class ManageUserStatusUI {
-        - email: String
-        - operation: String
-        + requestData()
-        + displayMessage(message: String)
-        + displayError(message: String)
+    class EnableDisableUserUI {
+        - enableUserController: EnableUserController
+        - disableUserController: DisableUserController
+        - scanner: Scanner
+        + run(): void
     }
 }
 
 package "controller" #DDDDDD {
-    class ManageUserStatusController {
-        + disableUser(email: String): UserDTO
-        + enableUser(email: String): UserDTO
+    class EnableUserController {
+        - enableUserService: EnableUserService
+        + enableUser(email: String): User
+    }
+
+    class DisableUserController {
+        - disableUserService: DisableUserService
+        + disableUser(email: String): User
     }
 }
 
 package "application" #DDDDDD {
-    class ManageUserStatusService {
-        + disableUser(email: String): UserDTO
-        + enableUser(email: String): UserDTO
+    class EnableUserService {
+        - userRepository: UserRepository
+        - authorizationService: AuthorizationService
+        + enableUser(emailValue: String): User
+    }
+
+    class DisableUserService {
+        - userRepository: UserRepository
+        - authorizationService: AuthorizationService
+        + disableUser(emailValue: String): User
     }
 
     class AuthorizationService {
-        + isAuthorized(user: User, permission: Permission): boolean
-    }
-
-    class UserDTO {
-        - email: String
-        - name: String
-        - phoneNumber: String
-        - enabled: boolean
+        + isAuthorized(permissionName: String): boolean
+        + requirePermission(permissionName: String): void
     }
 }
 
-package "domain" #DDDDDD {
+package "domain.user" #DDDDDD {
     class User {
         - email: Email
         - name: String
         - phoneNumber: PhoneNumber
         - enabled: boolean
-        - roles: List<Role>
+        - roles: Set<Role>
         - securityClearance: SecurityClearance
         - skillsAssessment: SkillsAssessment
         + enable(): void
         + disable(): void
         + isEnabled(): boolean
+        + isDisabled(): boolean
+        + status(): String
         + hasPermission(permission: Permission): boolean
     }
 
     class Email {
         - value: String
         + Email(value: String)
+        + value(): String
     }
 
     class PhoneNumber {
         - value: String
         + PhoneNumber(value: String)
-    }
-
-    class Role {
-        - name: String
-        - permissions: List<Permission>
-    }
-
-    class Permission {
-        - name: String
+        + value(): String
     }
 
     class SecurityClearance {
@@ -81,26 +81,43 @@ package "domain" #DDDDDD {
     }
 
     class SkillsAssessment {
-        - lastAssessmentDate: LocalDate
+        - assessmentDate: LocalDate
+        - validityPeriodInMonths: int
         + isValid(currentDate: LocalDate): boolean
+    }
+}
+
+package "domain.auth" #DDDDDD {
+    class Role {
+        - name: String
+        - permissions: Set<Permission>
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Permission {
+        - name: String
     }
 }
 
 package "repository" #DDDDDD {
     interface UserRepository {
         + findByEmail(email: Email): Optional<User>
-        + save(user: User): void
+        + save(user: User): User
     }
 }
 
-ManageUserStatusUI --> ManageUserStatusController : uses >
-ManageUserStatusController --> ManageUserStatusService : uses >
-ManageUserStatusService --> AuthorizationService : checks permission >
-ManageUserStatusService --> UserRepository : retrieves/saves >
-ManageUserStatusService --> User : enables/disables >
-ManageUserStatusService --> UserDTO : returns >
+EnableDisableUserUI --> EnableUserController : uses >
+EnableDisableUserUI --> DisableUserController : uses >
+EnableUserController --> EnableUserService : uses >
+DisableUserController --> DisableUserService : uses >
+EnableUserService --> AuthorizationService : checks permission >
+DisableUserService --> AuthorizationService : checks permission >
+EnableUserService --> UserRepository : retrieves/saves >
+DisableUserService --> UserRepository : retrieves/saves >
+EnableUserService --> User : enables >
+DisableUserService --> User : disables >
 
-UserRepository --> User : stores >
+UserRepository --> User : retrieves/saves >
 User *-- Email
 User *-- PhoneNumber
 User *-- SecurityClearance

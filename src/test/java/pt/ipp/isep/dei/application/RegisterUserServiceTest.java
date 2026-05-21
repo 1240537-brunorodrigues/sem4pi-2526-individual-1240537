@@ -19,6 +19,9 @@ class RegisterUserServiceTest {
 
     private UserRepository userRepository;
     private RoleRepository roleRepository;
+    private AuthenticatedUserSession session;
+    private AuthenticationService authenticationService;
+    private AuthorizationService authorizationService;
     private RegisterUserService service;
 
     @BeforeEach
@@ -29,7 +32,17 @@ class RegisterUserServiceTest {
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
 
-        service = new RegisterUserService(userRepository, roleRepository);
+        session = new AuthenticatedUserSession();
+        authenticationService = new AuthenticationService(userRepository, session);
+        authorizationService = new AuthorizationService(session);
+
+        authenticationService.authenticate("admin@alsafe.pt", "Password123");
+
+        service = new RegisterUserService(
+                userRepository,
+                roleRepository,
+                authorizationService
+        );
     }
 
     private RegisterUserRequest validRequest(String email) {
@@ -140,5 +153,55 @@ class RegisterUserServiceTest {
         );
 
         assertThrows(IllegalArgumentException.class, () -> service.registerUser(request));
+    }
+
+    @Test
+    void shouldRejectRegisterUserWhenNotAuthenticated() {
+        session.logout();
+
+        RegisterUserRequest request = validRequest("john.doe@alsafe.pt");
+
+        assertThrows(SecurityException.class, () -> service.registerUser(request));
+    }
+
+    @Test
+    void shouldRejectRegisterUserWhenUserDoesNotHavePermission() {
+        RegisterUserRequest weatherUserRequest = new RegisterUserRequest(
+                "weather@alsafe.pt",
+                "Weather User",
+                "+351912345678",
+                "Password123",
+                Set.of("WEATHER_PERSON"),
+                LocalDate.of(2028, 12, 31),
+                LocalDate.now(),
+                12
+        );
+
+        service.registerUser(weatherUserRequest);
+
+        authenticationService.logout();
+        authenticationService.authenticate("weather@alsafe.pt", "Password123");
+
+        RegisterUserRequest request = validRequest("john.doe@alsafe.pt");
+
+        assertThrows(SecurityException.class, () -> service.registerUser(request));
+    }
+
+    @Test
+    void shouldRejectNullUserRepository() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RegisterUserService(null, roleRepository, authorizationService));
+    }
+
+    @Test
+    void shouldRejectNullRoleRepository() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RegisterUserService(userRepository, null, authorizationService));
+    }
+
+    @Test
+    void shouldRejectNullAuthorizationService() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RegisterUserService(userRepository, roleRepository, null));
     }
 }

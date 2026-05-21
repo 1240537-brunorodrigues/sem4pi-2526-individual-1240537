@@ -8,65 +8,61 @@ skinparam classAttributeIconSize 0
 
 package "ui.console" #DDDDDD {
     class ListUsersUI {
-        + requestUserList()
-        + displayUsers(users: List<UserDTO>)
-        + displayMessage(message: String)
-        + displayError(message: String)
+        - controller: ListUsersController
+        + run(): void
+        + displayUsers(users: List<User>): void
+        + displayMessage(message: String): void
+        + displayError(message: String): void
     }
 }
 
 package "controller" #DDDDDD {
     class ListUsersController {
-        + listUsers(): List<UserDTO>
+        - listUsersService: ListUsersService
+        + listUsers(): List<User>
     }
 }
 
 package "application" #DDDDDD {
     class ListUsersService {
-        + listUsers(): List<UserDTO>
+        - userRepository: UserRepository
+        - authorizationService: AuthorizationService
+        + listUsers(): List<User>
     }
 
     class AuthorizationService {
-        + isAuthorized(user: User, permission: Permission): boolean
-    }
-
-    class UserDTO {
-        - email: String
-        - name: String
-        - phoneNumber: String
-        - enabled: boolean
-        - roles: List<String>
+        + isAuthorized(permissionName: String): boolean
+        + requirePermission(permissionName: String): void
     }
 }
 
-package "domain" #DDDDDD {
+package "domain.user" #DDDDDD {
     class User {
         - email: Email
         - name: String
         - phoneNumber: PhoneNumber
         - enabled: boolean
-        - roles: List<Role>
+        - roles: Set<Role>
         - securityClearance: SecurityClearance
         - skillsAssessment: SkillsAssessment
+        + email(): Email
+        + name(): String
+        + phoneNumber(): PhoneNumber
+        + roles(): Set<Role>
+        + status(): String
         + isEnabled(): boolean
+        + isDisabled(): boolean
         + hasPermission(permission: Permission): boolean
     }
 
     class Email {
         - value: String
+        + value(): String
     }
 
     class PhoneNumber {
         - value: String
-    }
-
-    class Role {
-        - name: String
-        - permissions: List<Permission>
-    }
-
-    class Permission {
-        - name: String
+        + value(): String
     }
 
     class SecurityClearance {
@@ -74,13 +70,27 @@ package "domain" #DDDDDD {
     }
 
     class SkillsAssessment {
-        - lastAssessmentDate: LocalDate
+        - assessmentDate: LocalDate
+        - validityPeriodInMonths: int
+    }
+}
+
+package "domain.auth" #DDDDDD {
+    class Role {
+        - name: String
+        - permissions: Set<Permission>
+        + name(): String
+        + hasPermission(permission: Permission): boolean
+    }
+
+    class Permission {
+        - name: String
     }
 }
 
 package "repository" #DDDDDD {
     interface UserRepository {
-        + findAllBackofficeUsers(): List<User>
+        + findAll(): List<User>
     }
 }
 
@@ -88,7 +98,6 @@ ListUsersUI --> ListUsersController : uses >
 ListUsersController --> ListUsersService : uses >
 ListUsersService --> AuthorizationService : checks permission >
 ListUsersService --> UserRepository : retrieves >
-ListUsersService --> UserDTO : creates >
 UserRepository --> User : returns >
 
 User *-- Email

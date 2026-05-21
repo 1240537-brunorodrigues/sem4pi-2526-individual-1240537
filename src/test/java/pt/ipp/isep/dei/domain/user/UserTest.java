@@ -255,4 +255,20 @@ class UserTest {
         assertEquals(user1, user2);
         assertEquals(user1.hashCode(), user2.hashCode());
     }
+
+    @Test
+    void shouldValidateSecurityClearance() {
+        User user = createValidUser();
+
+        assertTrue(user.hasValidSecurityClearance(LocalDate.of(2027, 12, 31)));
+        assertFalse(user.hasValidSecurityClearance(LocalDate.of(2028, 1, 1)));
+    }
+
+    @Test
+    void shouldValidateSkillsAssessment() {
+        User user = createValidUser();
+
+        assertTrue(user.hasValidSkillsAssessment(LocalDate.of(2027, 1, 1)));
+        assertFalse(user.hasValidSkillsAssessment(LocalDate.of(2027, 1, 2)));
+    }
 }
