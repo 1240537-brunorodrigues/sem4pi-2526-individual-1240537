@@ -11,6 +11,7 @@ public class MainMenuUI {
     private final RegisterUserUI registerUserUI;
     private final ListUsersUI listUsersUI;
     private final EnableDisableUserUI enableDisableUserUI;
+    private final RegisterAirControlAreaUI registerAirControlAreaUI;
     private final AuthorizationService authorizationService;
 
     public MainMenuUI(
@@ -18,6 +19,7 @@ public class MainMenuUI {
             RegisterUserUI registerUserUI,
             ListUsersUI listUsersUI,
             EnableDisableUserUI enableDisableUserUI,
+            RegisterAirControlAreaUI registerAirControlAreaUI,
             AuthorizationService authorizationService,
             Scanner scanner
     ) {
@@ -37,6 +39,10 @@ public class MainMenuUI {
             throw new IllegalArgumentException("Enable/disable user UI cannot be null.");
         }
 
+        if (registerAirControlAreaUI == null) {
+            throw new IllegalArgumentException("Register air control area UI cannot be null.");
+        }
+
         if (authorizationService == null) {
             throw new IllegalArgumentException("Authorization service cannot be null.");
         }
@@ -49,6 +55,7 @@ public class MainMenuUI {
         this.registerUserUI = registerUserUI;
         this.listUsersUI = listUsersUI;
         this.enableDisableUserUI = enableDisableUserUI;
+        this.registerAirControlAreaUI = registerAirControlAreaUI;
         this.authorizationService = authorizationService;
         this.scanner = scanner;
     }
@@ -67,6 +74,7 @@ public class MainMenuUI {
                 case 4 -> runListUsers();
                 case 5 -> runEnableUser();
                 case 6 -> runDisableUser();
+                case 7 -> runRegisterAirControlArea();
                 case 0 -> System.out.println("Exiting application...");
                 default -> System.out.println("Invalid option. Please try again.");
             }
@@ -81,8 +89,7 @@ public class MainMenuUI {
             authorizationService.requirePermission("REGISTER_USER");
             registerUserUI.run();
         } catch (SecurityException exception) {
-            System.out.println("Access denied.");
-            System.out.println("Reason: " + exception.getMessage());
+            displayAccessDenied(exception);
         }
     }
 
@@ -91,8 +98,7 @@ public class MainMenuUI {
             authorizationService.requirePermission("LIST_USERS");
             listUsersUI.run();
         } catch (SecurityException exception) {
-            System.out.println("Access denied.");
-            System.out.println("Reason: " + exception.getMessage());
+            displayAccessDenied(exception);
         }
     }
 
@@ -101,8 +107,7 @@ public class MainMenuUI {
             authorizationService.requirePermission("ENABLE_USER");
             enableDisableUserUI.enableUser();
         } catch (SecurityException exception) {
-            System.out.println("Access denied.");
-            System.out.println("Reason: " + exception.getMessage());
+            displayAccessDenied(exception);
         }
     }
 
@@ -111,9 +116,22 @@ public class MainMenuUI {
             authorizationService.requirePermission("DISABLE_USER");
             enableDisableUserUI.disableUser();
         } catch (SecurityException exception) {
-            System.out.println("Access denied.");
-            System.out.println("Reason: " + exception.getMessage());
+            displayAccessDenied(exception);
         }
+    }
+
+    private void runRegisterAirControlArea() {
+        try {
+            authorizationService.requirePermission("REGISTER_AIR_CONTROL_AREA");
+            registerAirControlAreaUI.run();
+        } catch (SecurityException exception) {
+            displayAccessDenied(exception);
+        }
+    }
+
+    private void displayAccessDenied(SecurityException exception) {
+        System.out.println("Access denied.");
+        System.out.println("Reason: " + exception.getMessage());
     }
 
     private void showMenu() {
@@ -126,6 +144,7 @@ public class MainMenuUI {
         System.out.println("4 - List Users");
         System.out.println("5 - Enable User");
         System.out.println("6 - Disable User");
+        System.out.println("7 - Register Air Control Area");
         System.out.println("0 - Exit");
         System.out.print("Choose an option: ");
     }

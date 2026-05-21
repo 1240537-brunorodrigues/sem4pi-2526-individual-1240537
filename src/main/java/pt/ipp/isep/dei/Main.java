@@ -3,10 +3,7 @@ package pt.ipp.isep.dei;
 import pt.ipp.isep.dei.application.*;
 import pt.ipp.isep.dei.bootstrap.Bootstrap;
 import pt.ipp.isep.dei.controller.*;
-import pt.ipp.isep.dei.repository.InMemoryRoleRepository;
-import pt.ipp.isep.dei.repository.InMemoryUserRepository;
-import pt.ipp.isep.dei.repository.RoleRepository;
-import pt.ipp.isep.dei.repository.UserRepository;
+import pt.ipp.isep.dei.repository.*;
 import pt.ipp.isep.dei.ui.console.*;
 
 import java.util.Scanner;
@@ -16,6 +13,7 @@ public class Main {
     public static void main(String[] args) {
         UserRepository userRepository = new InMemoryUserRepository();
         RoleRepository roleRepository = new InMemoryRoleRepository();
+        AirControlAreaRepository airControlAreaRepository = new InMemoryAirControlAreaRepository();
 
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
@@ -24,6 +22,7 @@ public class Main {
 
         AuthenticationService authenticationService = new AuthenticationService(userRepository, session);
         AuthorizationService authorizationService = new AuthorizationService(session);
+
         RegisterUserService registerUserService = new RegisterUserService(
                 userRepository,
                 roleRepository,
@@ -45,11 +44,18 @@ public class Main {
                 authorizationService
         );
 
+        RegisterAirControlAreaService registerAirControlAreaService = new RegisterAirControlAreaService(
+                airControlAreaRepository,
+                authorizationService
+        );
+
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);
         ListUsersController listUsersController = new ListUsersController(listUsersService);
         EnableUserController enableUserController = new EnableUserController(enableUserService);
         DisableUserController disableUserController = new DisableUserController(disableUserService);
+        RegisterAirControlAreaController registerAirControlAreaController =
+                new RegisterAirControlAreaController(registerAirControlAreaService);
 
         Scanner scanner = new Scanner(System.in);
 
@@ -61,12 +67,17 @@ public class Main {
                 disableUserController,
                 scanner
         );
+        RegisterAirControlAreaUI registerAirControlAreaUI = new RegisterAirControlAreaUI(
+                registerAirControlAreaController,
+                scanner
+        );
 
         MainMenuUI menu = new MainMenuUI(
                 authenticationUI,
                 registerUserUI,
                 listUsersUI,
                 enableDisableUserUI,
+                registerAirControlAreaUI,
                 authorizationService,
                 scanner
         );
