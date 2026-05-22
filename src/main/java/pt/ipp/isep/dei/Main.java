@@ -15,6 +15,8 @@ public class Main {
         RoleRepository roleRepository = new InMemoryRoleRepository();
         AirControlAreaRepository airControlAreaRepository = new InMemoryAirControlAreaRepository();
         AirportRepository airportRepository = new InMemoryAirportRepository();
+        AircraftEngineModelRepository aircraftEngineModelRepository =
+                new InMemoryAircraftEngineModelRepository();
 
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
@@ -56,6 +58,12 @@ public class Main {
                 authorizationService
         );
 
+        CreateAircraftEngineModelService createAircraftEngineModelService =
+                new CreateAircraftEngineModelService(
+                        aircraftEngineModelRepository,
+                        authorizationService
+                );
+
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);
         ListUsersController listUsersController = new ListUsersController(listUsersService);
@@ -65,6 +73,8 @@ public class Main {
                 new RegisterAirControlAreaController(registerAirControlAreaService);
         CreateAirportController createAirportController =
                 new CreateAirportController(createAirportService);
+        CreateAircraftEngineModelController createAircraftEngineModelController =
+                new CreateAircraftEngineModelController(createAircraftEngineModelService);
 
         Scanner scanner = new Scanner(System.in);
 
@@ -84,6 +94,11 @@ public class Main {
                 createAirportController,
                 scanner
         );
+        CreateAircraftEngineModelUI createAircraftEngineModelUI =
+                new CreateAircraftEngineModelUI(
+                        createAircraftEngineModelController,
+                        scanner
+                );
 
         MainMenuUI menu = new MainMenuUI(
                 authenticationUI,
@@ -92,6 +107,7 @@ public class Main {
                 enableDisableUserUI,
                 registerAirControlAreaUI,
                 createAirportUI,
+                createAircraftEngineModelUI,
                 authorizationService,
                 scanner
         );
