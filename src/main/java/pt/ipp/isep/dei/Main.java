@@ -17,6 +17,8 @@ public class Main {
         AirportRepository airportRepository = new InMemoryAirportRepository();
         AircraftEngineModelRepository aircraftEngineModelRepository =
                 new InMemoryAircraftEngineModelRepository();
+        AircraftModelRepository aircraftModelRepository =
+                new InMemoryAircraftModelRepository();
 
         Bootstrap bootstrap = new Bootstrap(userRepository, roleRepository);
         bootstrap.run();
@@ -64,6 +66,12 @@ public class Main {
                         authorizationService
                 );
 
+        CreateAircraftModelService createAircraftModelService =
+                new CreateAircraftModelService(
+                        aircraftModelRepository,
+                        authorizationService
+                );
+
         AuthenticationController authenticationController = new AuthenticationController(authenticationService);
         RegisterUserController registerUserController = new RegisterUserController(registerUserService);
         ListUsersController listUsersController = new ListUsersController(listUsersService);
@@ -75,6 +83,8 @@ public class Main {
                 new CreateAirportController(createAirportService);
         CreateAircraftEngineModelController createAircraftEngineModelController =
                 new CreateAircraftEngineModelController(createAircraftEngineModelService);
+        CreateAircraftModelController createAircraftModelController =
+                new CreateAircraftModelController(createAircraftModelService);
 
         Scanner scanner = new Scanner(System.in);
 
@@ -99,6 +109,11 @@ public class Main {
                         createAircraftEngineModelController,
                         scanner
                 );
+        CreateAircraftModelUI createAircraftModelUI =
+                new CreateAircraftModelUI(
+                        createAircraftModelController,
+                        scanner
+                );
 
         MainMenuUI menu = new MainMenuUI(
                 authenticationUI,
@@ -108,6 +123,7 @@ public class Main {
                 registerAirControlAreaUI,
                 createAirportUI,
                 createAircraftEngineModelUI,
+                createAircraftModelUI,
                 authorizationService,
                 scanner
         );
